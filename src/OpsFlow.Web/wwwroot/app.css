@@ -1,3 +1,70 @@
+:root {
+    color-scheme: light;
+    --ops-background: #f4f7fb;
+    --ops-surface: #ffffff;
+    --ops-sidebar: #101827;
+    --ops-border: #dce4ef;
+    --ops-text: #172033;
+    --ops-muted: #66758a;
+    --ops-accent: #2f6fed;
+    --ops-success: #16794d;
+    font-family: Inter, "Segoe UI", sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body {
+    min-height: 100%;
+    margin: 0;
+}
+
+body {
+    background: var(--ops-background);
+    color: var(--ops-text);
+}
+
+button,
+input,
+select,
+textarea {
+    font: inherit;
+}
+
+button:focus-visible,
+a:focus-visible {
+    outline: 3px solid rgb(47 111 237 / 35%);
+    outline-offset: 2px;
+}
+
+.ops-page {
+    max-width: 90rem;
+    margin: 0 auto;
+}
+
+.ops-page-header p {
+    max-width: 42rem;
+    color: var(--ops-muted);
+}
+
+.ops-eyebrow {
+    color: var(--ops-accent);
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.ops-placeholder {
+    margin-top: 2rem;
+    padding: 2rem;
+    border: 1px solid var(--ops-border);
+    border-radius: 1rem;
+    background: var(--ops-surface);
+}
+
 h1:focus {
     outline: none;
 }

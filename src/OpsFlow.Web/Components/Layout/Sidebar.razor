@@ -1,0 +1,29 @@
+<aside id="ops-primary-navigation"
+       class="ops-sidebar @(IsOpen ? "is-open" : null)">
+    <a class="ops-brand" href="/">
+        <span class="ops-brand-mark">OF</span>
+        <span>
+            <strong>OpsFlow</strong>
+            <small>Operations workspace</small>
+        </span>
+    </a>
+
+    <nav class="ops-navigation" aria-label="Primary navigation">
+        <NavLink href="/" Match="NavLinkMatch.All">
+            Dashboard
+        </NavLink>
+
+        <NavLink href="/orders">
+            Orders
+        </NavLink>
+    </nav>
+
+    <footer class="ops-sidebar-footer">
+        Portfolio environment
+    </footer>
+</aside>
+
+@code {
+    [Parameter]
+    public bool IsOpen { get; set; }
+}

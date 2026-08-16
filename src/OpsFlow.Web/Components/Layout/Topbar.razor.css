@@ -1,0 +1,50 @@
+.ops-topbar {
+    display: flex;
+    min-height: 4.5rem;
+    padding: 0 1.5rem;
+    align-items: center;
+    gap: 1rem;
+    border-bottom: 1px solid var(--ops-border);
+    background: var(--ops-surface);
+}
+
+.ops-menu-button {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    border: 1px solid var(--ops-border);
+    border-radius: 0.65rem;
+    background: white;
+    cursor: pointer;
+}
+
+.ops-topbar-title {
+    display: grid;
+}
+
+.ops-topbar-title span {
+    color: var(--ops-muted);
+    font-size: 0.75rem;
+}
+
+.ops-system-status {
+    display: flex;
+    margin-left: auto;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--ops-success);
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.ops-system-status span {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+@media (min-width: 900px) {
+    .ops-menu-button {
+        display: none;
+    }
+}

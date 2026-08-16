@@ -1,0 +1,31 @@
+<header class="ops-topbar">
+    <button type="button"
+            class="ops-menu-button"
+            aria-label="Toggle primary navigation"
+            aria-controls="ops-primary-navigation"
+            aria-expanded="@NavigationOpen"
+            @onclick="ToggleNavigationAsync">
+        <span aria-hidden="true">☰</span>
+    </button>
+
+    <div class="ops-topbar-title">
+        <span>Operations workspace</span>
+        <strong>Order orchestration</strong>
+    </div>
+
+    <div class="ops-system-status">
+        <span aria-hidden="true"></span>
+        Operational
+    </div>
+</header>
+
+@code {
+    [Parameter]
+    public bool NavigationOpen { get; set; }
+
+    [Parameter]
+    public EventCallback OnToggleNavigation { get; set; }
+
+    private Task ToggleNavigationAsync() =>
+        OnToggleNavigation.InvokeAsync();
+}

@@ -1,0 +1,73 @@
+.ops-sidebar {
+    display: none;
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 30;
+    width: 17rem;
+    padding: 1.5rem;
+    flex-direction: column;
+    background: var(--ops-sidebar);
+    color: #dbe5f5;
+}
+
+.ops-sidebar.is-open {
+    display: flex;
+}
+
+.ops-brand {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    color: white;
+    text-decoration: none;
+}
+
+.ops-brand-mark {
+    display: grid;
+    width: 2.5rem;
+    height: 2.5rem;
+    place-items: center;
+    border-radius: 0.75rem;
+    background: var(--ops-accent);
+    font-weight: 800;
+}
+
+.ops-brand small {
+    display: block;
+    margin-top: 0.15rem;
+    color: #8fa1b9;
+}
+
+.ops-navigation {
+    display: grid;
+    gap: 0.35rem;
+    margin-top: 2.5rem;
+}
+
+.ops-navigation ::deep a {
+    padding: 0.8rem 0.9rem;
+    border-radius: 0.65rem;
+    color: #aebcd0;
+    text-decoration: none;
+}
+
+.ops-navigation ::deep a:hover,
+.ops-navigation ::deep a.active {
+    background: #1d2a3d;
+    color: white;
+}
+
+.ops-sidebar-footer {
+    margin-top: auto;
+    color: #73859e;
+    font-size: 0.8rem;
+}
+
+@media (min-width: 900px) {
+    .ops-sidebar {
+        display: flex;
+        position: sticky;
+        top: 0;
+        height: 100dvh;
+    }
+}

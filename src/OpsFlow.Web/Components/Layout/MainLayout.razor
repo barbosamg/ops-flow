@@ -1,9 +1,36 @@
 ﻿@inherits LayoutComponentBase
 
-@Body
+<div class="ops-shell">
+    <Sidebar IsOpen="_navigationOpen" />
+
+    <div class="ops-workspace">
+        <Topbar NavigationOpen="_navigationOpen"
+                OnToggleNavigation="ToggleNavigation" />
+
+        <main id="main-content" class="ops-content">
+            @Body
+        </main>
+    </div>
+
+    @if (_navigationOpen)
+    {
+        <button type="button"
+                class="ops-navigation-backdrop"
+                aria-label="Close primary navigation"
+                @onclick="ToggleNavigation">
+        </button>
+    }
+</div>
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.
     <a href="." class="reload">Reload</a>
     <span class="dismiss">🗙</span>
 </div>
+
+@code {
+    private bool _navigationOpen;
+
+    private void ToggleNavigation() =>
+        _navigationOpen = !_navigationOpen;
+}

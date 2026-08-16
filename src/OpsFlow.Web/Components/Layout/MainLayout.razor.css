@@ -1,3 +1,39 @@
+.ops-shell {
+    min-height: 100dvh;
+}
+
+.ops-workspace {
+    min-width: 0;
+    min-height: 100dvh;
+}
+
+.ops-content {
+    padding: 1.5rem;
+}
+
+.ops-navigation-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    border: 0;
+    background: rgb(15 23 42 / 55%);
+}
+
+@media (min-width: 900px) {
+    .ops-shell {
+        display: grid;
+        grid-template-columns: 17rem minmax(0, 1fr);
+    }
+
+    .ops-content {
+        padding: 2rem;
+    }
+
+    .ops-navigation-backdrop {
+        display: none;
+    }
+}
+
 #blazor-error-ui {
     color-scheme: light only;
     background: lightyellow;
