@@ -1,0 +1,181 @@
+# ============================================================================
+# OpsFlow - .NET / Blazor / Telerik / SQL Server / Docker
+# ============================================================================
+
+# Private planning, study, and agent-guidance documents
+AGENTS.md
+PLAN.md
+TODO.md
+
+# .NET build output
+[Bb]in/
+[Oo]bj/
+[Aa]rtifacts/
+artifacts/
+publish/
+*.dll
+*.exe
+*.pdb
+*.cache
+*.deps.json
+*.runtimeconfig.dev.json
+*.runtimeconfig.prod.json
+
+# Visual Studio
+.vs/
+*.user
+*.rsuser
+*.suo
+*.userosscache
+*.sln.docstates
+*.VC.db
+*.VC.VC.opendb
+*.opendb
+*.psess
+*.vsp
+*.vspx
+*.sap
+
+# Visual Studio Code
+.vscode/
+
+# JetBrains Rider / ReSharper
+.idea/
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# NuGet packages and local/private feeds
+packages/
+*.nupkg
+*.snupkg
+*.nuget.props
+*.nuget.targets
+NuGet.Config
+nuget.config
+!NuGet.Config.example
+!nuget.config.example
+
+# Telerik license and local package configuration
+telerik-license.txt
+telerik-license.json
+*.telerik-license
+.telerik/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+appsettings.Local.json
+appsettings.*.Local.json
+appsettings.Development.local.json
+secrets.json
+*.secrets.json
+*.pfx
+*.p12
+*.pem
+*.key
+*.cer
+*.crt
+
+# ASP.NET Core user secrets copied into the repository
+UserSecrets/
+usersecrets/
+
+# Test results and coverage
+[Tt]est[Rr]esult*/
+[Tt]est[Rr]esults/
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+coverage/
+coverage.*
+coverage.cobertura.xml
+lcov.info
+
+# BenchmarkDotNet
+BenchmarkDotNet.Artifacts/
+
+# Logs and diagnostics
+logs/
+*.log
+*.log.*
+*.dmp
+*.stackdump
+
+# SQL Server local files, backups, and generated scripts
+*.mdf
+*.ldf
+*.ndf
+*.bak
+*.trn
+*.dacpac
+*.bacpac
+*.sqlplan
+*.actualplan
+*.estimatedplan
+
+# Entity Framework generated bundles
+efbundle
+efbundle.exe
+
+# Docker local overrides and persisted volumes
+docker-compose.override.yml
+compose.override.yml
+.docker-data/
+.containers/
+docker-volumes/
+seq-data/
+sql-data/
+
+# Azurite local storage
+__azurite_db_*.json
+__blobstorage__/
+__queuestorage__/
+__tablestorage__/
+azurite-data/
+
+# .NET Aspire local state
+.aspire/
+
+# Node tooling, if introduced for frontend assets
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm/
+.yarn/cache/
+.yarn/unplugged/
+
+# Generated frontend caches
+.sass-cache/
+.eslintcache
+.stylelintcache
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*.orig
+*.rej
+*~
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Linux editor and filesystem files
+*~
+.directory
