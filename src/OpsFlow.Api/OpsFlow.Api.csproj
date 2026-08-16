@@ -1,5 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
+  <ItemGroup>
+    <ProjectReference Include="..\OpsFlow.Application\OpsFlow.Application.csproj" />
+    <ProjectReference Include="..\OpsFlow.Infrastructure\OpsFlow.Infrastructure.csproj" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>

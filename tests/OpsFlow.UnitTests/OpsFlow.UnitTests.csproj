@@ -18,4 +18,9 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\OpsFlow.Domain\OpsFlow.Domain.csproj" />
+    <ProjectReference Include="..\..\src\OpsFlow.Application\OpsFlow.Application.csproj" />
+  </ItemGroup>
+
 </Project>
