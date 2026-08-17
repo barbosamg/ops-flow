@@ -3,6 +3,9 @@
 @using OpsFlow.Web.Clients.Orders
 @using OpsFlow.Web.Components.Orders
 @using OpsFlow.Web.Models.Orders
+@using OpsFlow.Web.Clients.Providers
+@using OpsFlow.Web.Models.Providers
+@inject IProvidersApiClient ProvidersApiClient
 @implements IDisposable
 @inject IOrdersApiClient OrdersApiClient
 
@@ -24,26 +27,35 @@
         </div>
     }
 
+    @if (!string.IsNullOrWhiteSpace(ProviderLoadError))
+    {
+        <div class="ops-orders-error" role="alert">
+            @ProviderLoadError
+        </div>
+    }
+
     <div class="ops-placeholder ops-grid-surface">
-        <TelerikGrid TItem="@OrderListItem"
-                     OnRead="@ReadOrdersAsync"
-                     @ref="_ordersGrid"
-                     Pageable="true"
-                     Sortable="true"
-                     Resizable="true"
-                     PageSize="5">
+        <TelerikGrid TItem="@OrderListItem" OnRead="@ReadOrdersAsync" @ref="_ordersGrid" Pageable="true" Sortable="true"
+                     Resizable="true" PageSize="5">
             <GridToolBar>
                 <GridToolBarCustomTool>
                     <label class="ops-status-filter">
                         <span>Status</span>
 
-                        <TelerikDropDownList Data="@StatusOptions"
-                                             TItem="@string"
-                                             TValue="@string"
-                                             Value="@SelectedStatus"
-                                             ValueChanged="@((string value) => OnStatusChangedAsync(value))"
-                                             AriaLabel="Filter orders by status"
-                                             Width="180px" />
+                        <TelerikDropDownList Data="@StatusOptions" TItem="@string" TValue="@string"
+                                             Value="@SelectedStatus" ValueChanged="@((string value) => OnStatusChangedAsync(value))"
+                                             AriaLabel="Filter orders by status" Width="180px" />
+                    </label>
+                </GridToolBarCustomTool>
+
+                <GridToolBarCustomTool>
+                    <label class="ops-status-filter">
+                        <span>Provider</span>
+
+                        <TelerikDropDownList Data="@ProviderOptions" TItem="@ProviderOption" TValue="@Guid"
+                                             TextField="@nameof(ProviderOption.Name)" ValueField="@nameof(ProviderOption.Id)"
+                                             Value="@SelectedProviderId" ValueChanged="@((Guid value) => OnProviderChangedAsync(value))"
+                                             AriaLabel="Filter orders by provider" Width="200px" />
                     </label>
                 </GridToolBarCustomTool>
 
@@ -89,6 +101,55 @@
 </section>
 
 @code {
+    private static readonly ProviderOption AllProvidersOption =
+        new(Guid.Empty, "All providers", string.Empty);
+
+    private readonly CancellationTokenSource _componentCancellationSource =
+        new();
+
+    private IReadOnlyList<ProviderOption> ProviderOptions { get; set; } =
+    [
+        AllProvidersOption
+    ];
+
+    private Guid SelectedProviderId { get; set; }
+    private string? ProviderLoadError { get; set; }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
+        {
+            var providers = await ProvidersApiClient.GetProvidersAsync(
+                _componentCancellationSource.Token);
+
+            ProviderOptions =
+            [
+                AllProvidersOption,
+                .. providers
+            ];
+        }
+        catch (OperationCanceledException)
+            when (_componentCancellationSource.IsCancellationRequested)
+        {
+            return;
+        }
+        catch (Exception exception)
+            when (exception is HttpRequestException or
+                  JsonException or
+                  InvalidOperationException)
+        {
+            ProviderLoadError =
+                "Providers could not be loaded. The provider filter is unavailable.";
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
     private List<string> SearchableFields { get; } =
     [
         nameof(OrderListItem.Number),
@@ -133,7 +194,10 @@
             {
                 Status = SelectedStatus == AllStatuses
                     ? null
-                    : SelectedStatus
+                    : SelectedStatus,
+                ProviderId = SelectedProviderId == Guid.Empty
+                    ? null
+                    : SelectedProviderId
             };
 
             var response = await OrdersApiClient.GetOrdersAsync(
@@ -177,10 +241,28 @@
         await _ordersGrid.SetStateAsync(state);
     }
 
+    private async Task OnProviderChangedAsync(Guid value)
+    {
+        SelectedProviderId = value;
+
+        if (_ordersGrid is null)
+        {
+            return;
+        }
+
+        var state = _ordersGrid.GetState();
+        state.Page = 1;
+
+        await _ordersGrid.SetStateAsync(state);
+    }
+
     public void Dispose()
     {
         _loadCancellationSource?.Cancel();
         _loadCancellationSource?.Dispose();
+
+        _componentCancellationSource.Cancel();
+        _componentCancellationSource.Dispose();
 
         GC.SuppressFinalize(this);
     }
