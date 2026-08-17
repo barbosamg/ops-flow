@@ -1,4 +1,5 @@
 @page "/orders"
+@using OpsFlow.Web.Models.Orders
 
 <PageTitle>Orders | OpsFlow</PageTitle>
 
@@ -11,26 +12,27 @@
         </p>
     </header>
 
-    <TelerikButton ThemeColor="@ThemeConstants.Button.ThemeColor.Primary" OnClick="ValidateTelerik">
-        Validate Telerik integration
-    </TelerikButton>
-
-    @if (_integrationValidated)
-    {
-        <p role="status">Telerik UI is interactive.</p>
-    }
-
     <div class="ops-placeholder">
-        <h2>Orders Grid</h2>
-        <p>The Telerik Grid will be introduced after the shell is validated.</p>
+        <TelerikGrid Data="@OrderItems" Pageable="true" Sortable="true" Resizable="true" PageSize="5">
+            <GridColumns>
+                <GridColumn Field="@nameof(OrderListItem.Number)" Title="Order" Width="160px" />
+
+                <GridColumn Field="@nameof(OrderListItem.CustomerName)" Title="Customer" Width="220px" />
+
+                <GridColumn Field="@nameof(OrderListItem.ProviderName)" Title="Provider" Width="180px" />
+
+                <GridColumn Field="@nameof(OrderListItem.Total)" Title="Total" DisplayFormat="{0:C2}" Width="140px" />
+
+                <GridColumn Field="@nameof(OrderListItem.CreatedAt)" Title="Created" DisplayFormat="{0:g}"
+                            Width="180px" />
+
+                <GridColumn Field="@nameof(OrderListItem.Status)" Title="Status" Width="140px" />
+            </GridColumns>
+        </TelerikGrid>
     </div>
 </section>
 
 @code {
-    private bool _integrationValidated;
-
-    private void ValidateTelerik()
-    {
-        _integrationValidated = true;
-    }
+    private IReadOnlyList<OrderListItem> OrderItems { get; } =
+        OrderDemoData.All;
 }
