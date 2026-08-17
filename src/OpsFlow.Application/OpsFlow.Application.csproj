@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\OpsFlow.Domain\OpsFlow.Domain.csproj" />
+    <PackageReference Include="FluentValidation" />
   </ItemGroup>
 
 </Project>
