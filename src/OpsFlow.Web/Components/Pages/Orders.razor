@@ -14,7 +14,12 @@
     </header>
 
     <div class="ops-placeholder ops-grid-surface">
-        <TelerikGrid Data="@OrderItems" Pageable="true" Sortable="true" Resizable="true" PageSize="5">
+        <TelerikGrid Data="@OrderItems" Pageable="true" Sortable="true" Resizable="true" PageSize="5"
+                     FilterMode="@GridFilterMode.FilterMenu">
+            <GridToolBar>
+                <GridToolBarSearchBoxTool Placeholder="Search orders..." Width="320px" DebounceDelay="350"
+                                          Fields="@SearchableFields" />
+            </GridToolBar>
             <GridColumns>
                 <GridColumn Field="@nameof(OrderListItem.Number)" Title="Order" Width="160px" />
 
@@ -55,4 +60,13 @@
 @code {
     private IReadOnlyList<OrderListItem> OrderItems { get; } =
         OrderDemoData.All;
+
+    private List<string> SearchableFields { get; } =
+    [
+        nameof(OrderListItem.Number),
+        nameof(OrderListItem.CustomerName),
+        nameof(OrderListItem.CustomerEmail),
+        nameof(OrderListItem.ProviderName),
+        nameof(OrderListItem.Status)
+    ];
 }
