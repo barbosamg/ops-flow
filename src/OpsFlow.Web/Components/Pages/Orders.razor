@@ -27,11 +27,27 @@
     <div class="ops-placeholder ops-grid-surface">
         <TelerikGrid TItem="@OrderListItem"
                      OnRead="@ReadOrdersAsync"
+                     @ref="_ordersGrid"
                      Pageable="true"
                      Sortable="true"
                      Resizable="true"
                      PageSize="5">
             <GridToolBar>
+                <GridToolBarCustomTool>
+                    <label class="ops-status-filter">
+                        <span>Status</span>
+
+                        <TelerikDropDownList Data="@StatusOptions"
+                                             TItem="@string"
+                                             TValue="@string"
+                                             Value="@SelectedStatus"
+                                             ValueChanged="@((string value) => OnStatusChangedAsync(value))"
+                                             AriaLabel="Filter orders by status"
+                                             Width="180px" />
+                    </label>
+                </GridToolBarCustomTool>
+
+                <GridToolBarSpacerTool />
                 <GridToolBarSearchBoxTool Placeholder="Search orders..." Width="320px" DebounceDelay="350"
                                           Fields="@SearchableFields" />
             </GridToolBar>
@@ -84,6 +100,22 @@
     private CancellationTokenSource? _loadCancellationSource;
 
     private string? LoadError { get; set; }
+    private const string AllStatuses = "All statuses";
+
+    private static readonly IReadOnlyList<string> StatusOptions =
+    [
+        AllStatuses,
+        "Draft",
+        "Pending",
+        "Processing",
+        "Completed",
+        "Failed",
+        "Cancelled"
+    ];
+
+    private TelerikGrid<OrderListItem>? _ordersGrid;
+
+    private string SelectedStatus { get; set; } = AllStatuses;
 
     private async Task ReadOrdersAsync(GridReadEventArgs args)
     {
@@ -97,7 +129,12 @@
 
         try
         {
-            var request = TelerikOrderRequestMapper.Map(args.Request);
+            var request = TelerikOrderRequestMapper.Map(args.Request) with
+            {
+                Status = SelectedStatus == AllStatuses
+                    ? null
+                    : SelectedStatus
+            };
 
             var response = await OrdersApiClient.GetOrdersAsync(
                 request,
@@ -123,6 +160,21 @@
             args.Data = Array.Empty<OrderListItem>();
             args.Total = 0;
         }
+    }
+
+    private async Task OnStatusChangedAsync(string value)
+    {
+        SelectedStatus = value;
+
+        if (_ordersGrid is null)
+        {
+            return;
+        }
+
+        var state = _ordersGrid.GetState();
+        state.Page = 1;
+
+        await _ordersGrid.SetStateAsync(state);
     }
 
     public void Dispose()

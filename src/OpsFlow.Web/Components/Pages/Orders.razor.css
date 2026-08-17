@@ -34,3 +34,12 @@
     color: #b42318;
     font-size: 0.9rem;
 }
+
+.ops-status-filter {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    color: var(--ops-muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+}
