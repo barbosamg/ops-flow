@@ -24,6 +24,21 @@ OpsFlow is an enterprise operations platform for managing orders submitted to ex
 
 The product replaces fragmented operational work across spreadsheets, logs, provider portals, and manual database queries with a clear, traceable, and action-oriented workflow.
 
+## Current implementation status
+
+The backend vertical slice is operational and ready for the Blazor frontend:
+
+- domain-owned order lifecycle, audit history, retry eligibility, and idempotency;
+- Minimal API endpoints for orders, customer/provider lookups, and dashboard metrics;
+- SQL Server persistence with EF Core migrations, deterministic seed data, indexes, constraints, and `rowversion` concurrency;
+- transactional outbox, Azure Storage Queues, Azurite, bounded delivery retries, and poison-queue handling;
+- separate Worker process with resilient HTTP calls to controlled success, rejection, transient-failure, and timeout scenarios;
+- SignalR update relay after persisted Worker results;
+- consistent `ProblemDetails`, correlation IDs, liveness/readiness checks, Dockerfiles, and Docker Compose;
+- unit, integration, API-contract, concurrency, queue, and end-to-end SignalR tests.
+
+The current development focus is the Blazor/Telerik experience. Authentication and policy authorization, Serilog/Seq, and production deployment hardening remain explicit later-stage work rather than completed features.
+
 ### Core user journey
 
 1. Find orders using search, advanced filters, sorting, and server-side pagination.
@@ -47,7 +62,7 @@ OpsFlow is designed to demonstrate ownership of a business feature from interfac
 | Business rules | Centralized order transitions, retry eligibility, concurrency protection, and audit history |
 | Data engineering | Relational modeling, transactions, indexes, execution plans, and optimized read paths |
 | Distributed workflows | SignalR, background processing, queues, retries, idempotency, and cancellation |
-| Production readiness | Security, structured logs, health checks, containers, tests, and failure diagnostics |
+| Production readiness | Structured logs, health checks, containers, tests, and failure diagnostics; authentication remains planned |
 
 ## Business rules
 
@@ -333,6 +348,37 @@ The API uses consistent `ProblemDetails` responses and meaningful HTTP semantics
 - `409 Conflict` for invalid state or optimistic-concurrency conflicts;
 - `202 Accepted` when asynchronous processing is registered successfully.
 
+## Run the backend
+
+Requirements: Docker Desktop and the .NET 10 SDK.
+
+1. Copy `.env.example` to `.env` and replace the placeholder with a strong local SQL Server password. The `.env` file is ignored by Git.
+2. Start the reproducible backend environment:
+
+   ```powershell
+   docker compose up -d --build
+   ```
+
+3. Verify the API, SQL Server, and queue readiness:
+
+   ```powershell
+   Invoke-WebRequest http://localhost:5153/health/ready -UseBasicParsing
+   ```
+
+4. Run the automated test suite:
+
+   ```powershell
+   dotnet test OpsFlow.sln
+   ```
+
+5. Stop the environment without deleting the persistent volumes:
+
+   ```powershell
+   docker compose down
+   ```
+
+The API is available at `http://localhost:5153`. Local non-container development uses SQL Server LocalDB and Azurite on ports `10000`–`10002`.
+
 ## Technology stack
 
 | Area | Technology | Responsibility |
@@ -341,15 +387,14 @@ The API uses consistent `ProblemDetails` responses and meaningful HTTP semantics
 | Frontend | Blazor Web App | Interactive component-based UI |
 | Component library | Telerik UI for Blazor | Enterprise grids, forms, dialogs, charts, and navigation |
 | Styling | HTML, CSS, Bootstrap, and scoped CSS | Responsive layout and visual system |
-| API | ASP.NET Core Minimal APIs | HTTP contracts, middleware, authentication, and authorization |
+| API | ASP.NET Core Minimal APIs | HTTP contracts, middleware, `ProblemDetails`, health checks, and SignalR hosting |
 | Validation | FluentValidation | Request and business-input validation |
 | Persistence | SQL Server and Entity Framework Core | Relational data, transactions, and concurrency |
-| Optimized reads | ADO.NET | Focused data-intensive queries when measurement justifies it |
 | Real time | SignalR | Live order and processing updates |
 | Background processing | `BackgroundService` | Queue consumption and provider workflows |
 | Messaging | Azure Storage Queues and Azurite | Durable asynchronous processing in cloud and local environments |
 | HTTP resilience | `Microsoft.Extensions.Http.Resilience` | Timeouts, retries, circuit handling, and resilient provider calls |
-| Observability | Serilog, Seq, and health checks | Structured diagnostics and service visibility |
+| Observability | Built-in structured logging and health checks | Current diagnostics and service visibility |
 | Containers | Docker and Docker Compose | Reproducible local infrastructure |
 | Testing | xUnit | Unit and integration verification |
 
@@ -374,8 +419,7 @@ Components are introduced when they encode reusable behavior or a visual rule. T
 
 ## Reliability and observability
 
-- structured logging with Serilog;
-- centralized local log analysis with Seq;
+- structured application and infrastructure logging;
 - correlation ID propagation across Web, API, queue, Worker, and provider requests;
 - start, completion, duration, and safe failure-category logs for every attempt;
 - health checks for API, SQL Server, queue, and essential dependencies;
@@ -384,9 +428,8 @@ Components are introduced when they encode reusable behavior or a visual rule. T
 - provider timeouts and cooperative cancellation;
 - explicit diagnostics for container startup, networking, configuration, and dependency failures.
 
-## Security
+## Security baseline
 
-- authentication and policy-based authorization enforced by the backend;
 - validation of every state-changing command;
 - protection against overposting and unbounded queries;
 - external error responses without stack traces or sensitive provider details;
@@ -394,16 +437,16 @@ Components are introduced when they encode reusable behavior or a visual rule. T
 - no passwords, tokens, Telerik license material, or real connection strings in source control;
 - logs designed to avoid credentials and unnecessary personal data.
 
+Authentication and policy-based authorization are planned before any production deployment. They are not represented as a completed security boundary in the current portfolio build.
+
 ## Testing strategy
 
-| Scope | Main scenarios |
+| Scope | Current coverage |
 |---|---|
-| Domain tests | Valid and invalid transitions, invariants, retry eligibility, and terminal states |
-| Application tests | Validation, permissions, idempotency, filtering, sorting, and cancellation |
-| Integration tests | API contracts, real database behavior, transactions, concurrency, and `ProblemDetails` |
-| Component tests | Status badges, forms, validation, loading, empty, error, and authorization states |
-| End-to-end tests | Search → inspect → retry → process → receive real-time update |
-| Manual UX validation | Desktop/mobile layouts, keyboard navigation, focus, contrast, and two-tab SignalR behavior |
+| Domain tests | Valid and invalid transitions, invariants, retry eligibility, idempotency, and terminal states |
+| Application/infrastructure tests | Query validation, filtering, sorting, cancellation, and Azurite queue creation |
+| End-to-end backend tests | API contracts, SQL Server concurrency, `ProblemDetails`, retry processing, timeout, and SignalR delivery |
+| Frontend tests | Planned alongside the Blazor forms, details, dashboard, and reconnecting states |
 
 ## Engineering principles
 

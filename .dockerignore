@@ -1,0 +1,15 @@
+**/bin/
+**/obj/
+.git/
+.github/
+.vs/
+.vscode/
+.env
+.env.*
+!.env.example
+AGENTS.md
+PLAN.md
+TODO.md
+TestResults/
+coverage/
+logs/
