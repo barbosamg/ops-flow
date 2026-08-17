@@ -1,0 +1,48 @@
+.ops-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.ops-status-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.is-completed {
+    color: #14734a;
+    background: #e8f7ef;
+}
+
+.is-processing {
+    color: #245fc7;
+    background: #eaf1ff;
+}
+
+.is-failed {
+    color: #b42318;
+    background: #feeceb;
+}
+
+.is-pending {
+    color: #8a5a00;
+    background: #fff4d6;
+}
+
+.is-cancelled {
+    color: #536174;
+    background: #edf1f5;
+}
+
+.is-neutral {
+    color: #536174;
+    background: #edf1f5;
+}

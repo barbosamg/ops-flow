@@ -1,5 +1,6 @@
 @page "/orders"
 @using OpsFlow.Web.Models.Orders
+@using OpsFlow.Web.Components.Orders
 
 <PageTitle>Orders | OpsFlow</PageTitle>
 
@@ -12,12 +13,23 @@
         </p>
     </header>
 
-    <div class="ops-placeholder">
+    <div class="ops-placeholder ops-grid-surface">
         <TelerikGrid Data="@OrderItems" Pageable="true" Sortable="true" Resizable="true" PageSize="5">
             <GridColumns>
                 <GridColumn Field="@nameof(OrderListItem.Number)" Title="Order" Width="160px" />
 
-                <GridColumn Field="@nameof(OrderListItem.CustomerName)" Title="Customer" Width="220px" />
+                <GridColumn Field="@nameof(OrderListItem.CustomerName)" Title="Customer" Width="240px">
+                    <Template Context="item">
+                        @{
+                            var order = (OrderListItem)item;
+                        }
+
+                        <div class="ops-customer-cell">
+                            <strong>@order.CustomerName</strong>
+                            <span>@order.CustomerEmail</span>
+                        </div>
+                    </Template>
+                </GridColumn>
 
                 <GridColumn Field="@nameof(OrderListItem.ProviderName)" Title="Provider" Width="180px" />
 
@@ -26,7 +38,15 @@
                 <GridColumn Field="@nameof(OrderListItem.CreatedAt)" Title="Created" DisplayFormat="{0:g}"
                             Width="180px" />
 
-                <GridColumn Field="@nameof(OrderListItem.Status)" Title="Status" Width="140px" />
+                <GridColumn Field="@nameof(OrderListItem.Status)" Title="Status" Width="150px">
+                    <Template Context="item">
+                        @{
+                            var order = (OrderListItem)item;
+                        }
+
+                        <OrderStatusBadge Status="@order.Status" />
+                    </Template>
+                </GridColumn>
             </GridColumns>
         </TelerikGrid>
     </div>

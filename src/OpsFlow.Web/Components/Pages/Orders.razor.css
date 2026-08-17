@@ -1,0 +1,26 @@
+.ops-grid-surface {
+    margin-top: 1.5rem;
+    padding: 0;
+    overflow: hidden;
+}
+
+.ops-customer-cell {
+    display: grid;
+    gap: 0.15rem;
+}
+
+.ops-customer-cell strong {
+    color: var(--ops-text);
+    font-size: 0.9rem;
+}
+
+.ops-customer-cell span {
+    color: var(--ops-muted);
+    font-size: 0.78rem;
+}
+
+@media (max-width: 899px) {
+    .ops-grid-surface {
+        overflow-x: auto;
+    }
+}
