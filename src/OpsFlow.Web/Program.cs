@@ -1,5 +1,6 @@
 using OpsFlow.Web.Components;
 using Telerik.Blazor.Services;
+using OpsFlow.Web.Clients.Orders;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,6 +9,18 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddTelerikBlazor();
+
+builder.Services.AddHttpClient<IOrdersApiClient, OrdersApiClient>(
+    client =>
+    {
+        var apiBaseUrl = builder.Configuration["Api:BaseUrl"]
+            ?? throw new InvalidOperationException(
+                "API base URL is not configured.");
+
+        client.BaseAddress = new Uri(
+            apiBaseUrl,
+            UriKind.Absolute);
+    });
 
 var app = builder.Build();
 
