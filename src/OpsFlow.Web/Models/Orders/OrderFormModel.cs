@@ -14,7 +14,9 @@ public sealed class OrderFormModel
         typeof(decimal),
         "0.01",
         "999999999999.99",
-        ErrorMessage = "Informe um valor maior que zero.")]
+        ErrorMessage = "Informe um valor maior que zero.",
+        ParseLimitsInInvariantCulture = true,
+        ConvertValueInInvariantCulture = true)]
     public decimal Amount { get; set; }
 
     [StringLength(1000, ErrorMessage = "Use no máximo 1000 caracteres.")]
