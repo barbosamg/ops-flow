@@ -26,7 +26,7 @@ The product replaces fragmented operational work across spreadsheets, logs, prov
 
 ## Current implementation status
 
-The backend vertical slice is operational and ready for the Blazor frontend:
+The complete portfolio vertical slice is operational:
 
 - domain-owned order lifecycle, audit history, retry eligibility, and idempotency;
 - Minimal API endpoints for orders, customer/provider lookups, and dashboard metrics;
@@ -37,7 +37,16 @@ The backend vertical slice is operational and ready for the Blazor frontend:
 - consistent `ProblemDetails`, correlation IDs, liveness/readiness checks, Dockerfiles, and Docker Compose;
 - unit, integration, API-contract, concurrency, queue, and end-to-end SignalR tests.
 
-The current development focus is the Blazor/Telerik experience. Authentication and policy authorization, Serilog/Seq, and production deployment hardening remain explicit later-stage work rather than completed features.
+The Blazor frontend now includes:
+
+- a responsive operations Dashboard with status, volume, and provider-performance metrics;
+- a Telerik Orders Grid with server-side search, filtering, sorting, and pagination;
+- customer, provider, status, date, and amount filters with clear loading, empty, and recoverable-error states;
+- create and eligible-edit forms with client validation, API validation, and optimistic-concurrency feedback;
+- order details with an audit timeline, integration attempts, sanitized errors, and correlation IDs;
+- idempotent retry actions and automatic UI synchronization through a reconnecting SignalR client.
+
+Authentication and policy authorization, Serilog/Seq, measured performance tuning, and production deployment hardening remain explicit later-stage work rather than completed features.
 
 ### Verified backend baseline
 
@@ -47,9 +56,9 @@ The current development focus is the Blazor/Telerik experience. Authentication a
 - API, SQL Server, Azurite, and Worker start through Docker Compose, with the API readiness endpoint returning HTTP 200;
 - the backend baseline is published on `main` through commits `ec30bb0` and `52102c6`.
 
-### Next implementation milestone
+### Frontend MVP baseline
 
-The next milestone is intentionally frontend-first: complete the typed lookup clients and Orders filters, add recoverable loading and error states, implement create/edit and details experiences, and finally connect SignalR reconnection to the visible order state. Backend hardening that does not block this vertical slice remains deferred until the main user journey is visually complete.
+The main user journey is implemented from operational overview to server-side order search, create/edit, details, asynchronous retry, Worker processing, and real-time status refresh. The next iteration is portfolio hardening: browser regression coverage, screenshots, authentication, centralized logs, and measured SQL/UI performance.
 
 ### Core user journey
 
@@ -69,7 +78,7 @@ OpsFlow is designed to demonstrate ownership of a business feature from interfac
 |---|---|
 | Enterprise frontend | Responsive Blazor screens, visual hierarchy, dense data presentation, and accessible interaction states |
 | Component design | Reusable Razor components and consistent design tokens without unnecessary abstractions |
-| Advanced data UI | Customized Telerik Grid, server operations, filters, templates, forms, dialogs, and dashboards |
+| Advanced data UI | Customized Telerik Grid and dropdowns with server operations, templates, forms, details, and dashboards |
 | Backend contracts | Minimal APIs, DTOs, validation, dependency injection, middleware, and consistent HTTP semantics |
 | Business rules | Centralized order transitions, retry eligibility, concurrency protection, and audit history |
 | Data engineering | Relational modeling, transactions, indexes, execution plans, and optimized read paths |
@@ -458,7 +467,7 @@ Authentication and policy-based authorization are planned before any production 
 | Domain tests | Valid and invalid transitions, invariants, retry eligibility, idempotency, and terminal states |
 | Application/infrastructure tests | Query validation, filtering, sorting, cancellation, and Azurite queue creation |
 | End-to-end backend tests | API contracts, SQL Server concurrency, `ProblemDetails`, retry processing, timeout, and SignalR delivery |
-| Frontend tests | Planned alongside the Blazor forms, details, dashboard, and reconnecting states |
+| Frontend tests | Clean Razor build plus HTTP smoke coverage for Dashboard, Orders, and Details; interactive browser regression remains planned |
 
 ## Engineering principles
 
