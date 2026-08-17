@@ -113,12 +113,71 @@ public sealed class InMemoryOrderReadRepository : IOrderReadRepository
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        IEnumerable<OrderListItemDto> filteredOrders = Orders;
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var search = query.Search.Trim();
+
+            filteredOrders = filteredOrders.Where(order =>
+                order.Number.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                order.CustomerName.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                order.CustomerEmail.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                order.ProviderName.Contains(search, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (query.Status.HasValue)
+        {
+            filteredOrders = filteredOrders.Where(
+                order => order.Status == query.Status.Value);
+        }
+
+        if (query.CustomerId.HasValue)
+        {
+            filteredOrders = filteredOrders.Where(
+                order => order.CustomerId == query.CustomerId.Value);
+        }
+
+        if (query.ProviderId.HasValue)
+        {
+            filteredOrders = filteredOrders.Where(
+                order => order.ProviderId == query.ProviderId.Value);
+        }
+
+        if (query.CreatedFromUtc.HasValue)
+        {
+            filteredOrders = filteredOrders.Where(
+                order => order.CreatedAtUtc >= query.CreatedFromUtc.Value);
+        }
+
+        if (query.CreatedToUtc.HasValue)
+        {
+            filteredOrders = filteredOrders.Where(
+                order => order.CreatedAtUtc <= query.CreatedToUtc.Value);
+        }
+
+        if (query.MinAmount.HasValue)
+        {
+            filteredOrders = filteredOrders.Where(
+                order => order.Amount >= query.MinAmount.Value);
+        }
+
+        if (query.MaxAmount.HasValue)
+        {
+            filteredOrders = filteredOrders.Where(
+                order => order.Amount <= query.MaxAmount.Value);
+        }
+
+        var totalCount = filteredOrders.Count();
+
+        var orderedOrders = ApplySorting(filteredOrders, query.Sort);
+
         var skip = (long)(query.Page - 1) * query.PageSize;
 
         IReadOnlyList<OrderListItemDto> pageItems =
-            skip >= Orders.Count
+            skip >= totalCount
                 ? []
-                : Orders
+                : orderedOrders
                     .Skip((int)skip)
                     .Take(query.PageSize)
                     .ToArray();
@@ -127,8 +186,55 @@ public sealed class InMemoryOrderReadRepository : IOrderReadRepository
             pageItems,
             query.Page,
             query.PageSize,
-            Orders.Count);
+            totalCount);
 
         return Task.FromResult(result);
+    }
+
+    private static IOrderedEnumerable<OrderListItemDto> ApplySorting(
+        IEnumerable<OrderListItemDto> orders,
+        string? sort)
+    {
+        return sort?.ToUpperInvariant() switch
+        {
+            "NUMBER" => orders.OrderBy(
+                order => order.Number,
+                StringComparer.OrdinalIgnoreCase),
+
+            "-NUMBER" => orders.OrderByDescending(
+                order => order.Number,
+                StringComparer.OrdinalIgnoreCase),
+
+            "CUSTOMERNAME" => orders.OrderBy(
+                order => order.CustomerName,
+                StringComparer.OrdinalIgnoreCase),
+
+            "-CUSTOMERNAME" => orders.OrderByDescending(
+                order => order.CustomerName,
+                StringComparer.OrdinalIgnoreCase),
+
+            "PROVIDERNAME" => orders.OrderBy(
+                order => order.ProviderName,
+                StringComparer.OrdinalIgnoreCase),
+
+            "-PROVIDERNAME" => orders.OrderByDescending(
+                order => order.ProviderName,
+                StringComparer.OrdinalIgnoreCase),
+
+            "AMOUNT" => orders.OrderBy(order => order.Amount),
+
+            "-AMOUNT" => orders.OrderByDescending(order => order.Amount),
+
+            "CREATEDATUTC" => orders.OrderBy(order => order.CreatedAtUtc),
+
+            "-CREATEDATUTC" => orders.OrderByDescending(
+                order => order.CreatedAtUtc),
+
+            "STATUS" => orders.OrderBy(order => order.Status),
+
+            "-STATUS" => orders.OrderByDescending(order => order.Status),
+
+            _ => orders.OrderByDescending(order => order.CreatedAtUtc)
+        };
     }
 }

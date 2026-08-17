@@ -6,9 +6,9 @@ namespace OpsFlow.Api.Contracts.Orders;
 
 public sealed class GetOrdersRequest
 {
-    public int Page { get; init; } = 1;
+    public int? Page { get; init; }
 
-    public int PageSize { get; init; } = 25;
+    public int? PageSize { get; init; }
 
     public string? Search { get; init; }
 
@@ -31,8 +31,8 @@ public sealed class GetOrdersRequest
     public GetOrdersQuery ToQuery()
     {
         return new GetOrdersQuery(
-            Page,
-            PageSize,
+            Page ?? 1,
+            PageSize ?? 25,
             Search,
             Status,
             CustomerId,
