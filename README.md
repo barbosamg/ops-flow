@@ -39,6 +39,18 @@ The backend vertical slice is operational and ready for the Blazor frontend:
 
 The current development focus is the Blazor/Telerik experience. Authentication and policy authorization, Serilog/Seq, and production deployment hardening remain explicit later-stage work rather than completed features.
 
+### Verified backend baseline
+
+- all eight solution projects restore and build without errors or warnings;
+- the regular test suite passes 25 tests;
+- the opt-in end-to-end suite passes against real SQL Server and Azurite containers, including optimistic concurrency, asynchronous retry processing, `ProblemDetails`, and SignalR delivery;
+- API, SQL Server, Azurite, and Worker start through Docker Compose, with the API readiness endpoint returning HTTP 200;
+- the backend baseline is published on `main` through commits `ec30bb0` and `52102c6`.
+
+### Next implementation milestone
+
+The next milestone is intentionally frontend-first: complete the typed lookup clients and Orders filters, add recoverable loading and error states, implement create/edit and details experiences, and finally connect SignalR reconnection to the visible order state. Backend hardening that does not block this vertical slice remains deferred until the main user journey is visually complete.
+
 ### Core user journey
 
 1. Find orders using search, advanced filters, sorting, and server-side pagination.
