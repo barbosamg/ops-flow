@@ -1,6 +1,10 @@
 @page "/orders"
-@using OpsFlow.Web.Models.Orders
+@using System.Text.Json
+@using OpsFlow.Web.Clients.Orders
 @using OpsFlow.Web.Components.Orders
+@using OpsFlow.Web.Models.Orders
+@implements IDisposable
+@inject IOrdersApiClient OrdersApiClient
 
 <PageTitle>Orders | OpsFlow</PageTitle>
 
@@ -13,9 +17,20 @@
         </p>
     </header>
 
+    @if (!string.IsNullOrWhiteSpace(LoadError))
+    {
+        <div class="ops-orders-error" role="alert">
+            @LoadError
+        </div>
+    }
+
     <div class="ops-placeholder ops-grid-surface">
-        <TelerikGrid Data="@OrderItems" Pageable="true" Sortable="true" Resizable="true" PageSize="5"
-                     FilterMode="@GridFilterMode.FilterMenu">
+        <TelerikGrid TItem="@OrderListItem"
+                     OnRead="@ReadOrdersAsync"
+                     Pageable="true"
+                     Sortable="true"
+                     Resizable="true"
+                     PageSize="5">
             <GridToolBar>
                 <GridToolBarSearchBoxTool Placeholder="Search orders..." Width="320px" DebounceDelay="350"
                                           Fields="@SearchableFields" />
@@ -58,15 +73,63 @@
 </section>
 
 @code {
-    private IReadOnlyList<OrderListItem> OrderItems { get; } =
-        OrderDemoData.All;
-
     private List<string> SearchableFields { get; } =
     [
         nameof(OrderListItem.Number),
         nameof(OrderListItem.CustomerName),
         nameof(OrderListItem.CustomerEmail),
-        nameof(OrderListItem.ProviderName),
-        nameof(OrderListItem.Status)
+        nameof(OrderListItem.ProviderName)
     ];
+
+    private CancellationTokenSource? _loadCancellationSource;
+
+    private string? LoadError { get; set; }
+
+    private async Task ReadOrdersAsync(GridReadEventArgs args)
+    {
+        _loadCancellationSource?.Cancel();
+        _loadCancellationSource?.Dispose();
+
+        _loadCancellationSource = new CancellationTokenSource();
+        var cancellationToken = _loadCancellationSource.Token;
+
+        LoadError = null;
+
+        try
+        {
+            var request = TelerikOrderRequestMapper.Map(args.Request);
+
+            var response = await OrdersApiClient.GetOrdersAsync(
+                request,
+                cancellationToken);
+
+            args.Data = response.Items;
+            args.Total = response.TotalCount;
+        }
+        catch (OperationCanceledException)
+            when (cancellationToken.IsCancellationRequested)
+        {
+            args.Data = Array.Empty<OrderListItem>();
+            args.Total = 0;
+        }
+        catch (Exception exception)
+            when (exception is HttpRequestException or
+                  JsonException or
+                  InvalidOperationException)
+        {
+            LoadError =
+                "Orders could not be loaded. Check the API and try again.";
+
+            args.Data = Array.Empty<OrderListItem>();
+            args.Total = 0;
+        }
+    }
+
+    public void Dispose()
+    {
+        _loadCancellationSource?.Cancel();
+        _loadCancellationSource?.Dispose();
+
+        GC.SuppressFinalize(this);
+    }
 }

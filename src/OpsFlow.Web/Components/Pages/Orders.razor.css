@@ -24,3 +24,13 @@
         overflow-x: auto;
     }
 }
+
+.ops-orders-error {
+    margin-top: 1rem;
+    padding: 0.85rem 1rem;
+    border: 1px solid #d92d20;
+    border-radius: 0.65rem;
+    background: #fff4f2;
+    color: #b42318;
+    font-size: 0.9rem;
+}
