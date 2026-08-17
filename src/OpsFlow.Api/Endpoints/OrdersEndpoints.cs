@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using OpsFlow.Api.Contracts.Orders;
 using OpsFlow.Application.Common.Pagination;
 using OpsFlow.Application.Orders.Queries.GetOrders;
+using OpsFlow.Application.Orders.Ports;
 
 namespace OpsFlow.Api.Endpoints;
 
@@ -27,6 +28,7 @@ public static class OrdersEndpoints
         GetOrdersAsync(
             [AsParameters] GetOrdersRequest request,
             IValidator<GetOrdersQuery> validator,
+            IOrderReadRepository repository,
             CancellationToken cancellationToken)
     {
         var query = request.ToQuery();
@@ -41,11 +43,9 @@ public static class OrdersEndpoints
                 validationResult.ToDictionary());
         }
 
-        var response = new PagedResult<OrderListItemDto>(
-            [],
-            query.Page,
-            query.PageSize,
-            0);
+        var response = await repository.SearchAsync(
+            query,
+            cancellationToken);
 
         return TypedResults.Ok(response);
     }
