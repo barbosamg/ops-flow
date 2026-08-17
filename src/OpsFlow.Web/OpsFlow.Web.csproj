@@ -4,4 +4,8 @@
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Telerik.UI.for.Blazor" />
+  </ItemGroup>
+
 </Project>

@@ -1,26 +1,26 @@
 ﻿@inherits LayoutComponentBase
 
-<div class="ops-shell">
-    <Sidebar IsOpen="_navigationOpen" />
+<TelerikRootComponent>
 
-    <div class="ops-workspace">
-        <Topbar NavigationOpen="_navigationOpen"
-                OnToggleNavigation="ToggleNavigation" />
+    <div class="ops-shell">
+        <Sidebar IsOpen="_navigationOpen" />
 
-        <main id="main-content" class="ops-content">
-            @Body
-        </main>
+        <div class="ops-workspace">
+            <Topbar NavigationOpen="_navigationOpen" OnToggleNavigation="ToggleNavigation" />
+
+            <main id="main-content" class="ops-content">
+                @Body
+            </main>
+        </div>
+
+        @if (_navigationOpen)
+        {
+            <button type="button" class="ops-navigation-backdrop" aria-label="Close primary navigation"
+                    @onclick="ToggleNavigation">
+            </button>
+        }
     </div>
-
-    @if (_navigationOpen)
-    {
-        <button type="button"
-                class="ops-navigation-backdrop"
-                aria-label="Close primary navigation"
-                @onclick="ToggleNavigation">
-        </button>
-    }
-</div>
+</TelerikRootComponent>
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.

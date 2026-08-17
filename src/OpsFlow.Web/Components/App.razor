@@ -5,17 +5,34 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
+
     <ResourcePreloader />
+
+    <link rel="stylesheet"
+          href="@Assets["_content/Telerik.UI.for.Blazor/css/kendo-theme-default/all.css"]" />
     <link rel="stylesheet" href="@Assets["app.css"]" />
     <link rel="stylesheet" href="@Assets["OpsFlow.Web.styles.css"]" />
+
     <ImportMap />
+
+    <script src="@Assets["_content/Telerik.UI.for.Blazor/js/telerik-blazor.js"]"
+            defer></script>
+
     <HeadOutlet @rendermode="InteractiveServer" />
 </head>
 
-<body>
+<body class="k-body">
     <Routes @rendermode="InteractiveServer" />
     <ReconnectModal />
-    <script src="@Assets["_framework/blazor.web.js"]"></script>
+
+    <script src="@Assets["_framework/blazor.web.js"]"
+            autostart="false"></script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            Blazor.start();
+        });
+    </script>
 </body>
 
 </html>

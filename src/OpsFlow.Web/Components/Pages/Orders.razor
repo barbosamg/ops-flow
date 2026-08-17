@@ -11,8 +11,26 @@
         </p>
     </header>
 
+    <TelerikButton ThemeColor="@ThemeConstants.Button.ThemeColor.Primary" OnClick="ValidateTelerik">
+        Validate Telerik integration
+    </TelerikButton>
+
+    @if (_integrationValidated)
+    {
+        <p role="status">Telerik UI is interactive.</p>
+    }
+
     <div class="ops-placeholder">
         <h2>Orders Grid</h2>
         <p>The Telerik Grid will be introduced after the shell is validated.</p>
     </div>
 </section>
+
+@code {
+    private bool _integrationValidated;
+
+    private void ValidateTelerik()
+    {
+        _integrationValidated = true;
+    }
+}
