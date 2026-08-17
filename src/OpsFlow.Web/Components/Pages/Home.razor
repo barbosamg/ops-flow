@@ -1,19 +1,248 @@
-﻿@page "/"
+@page "/"
+@using System.Globalization
+@using OpsFlow.Web.Clients.Common
+@using OpsFlow.Web.Clients.Dashboard
+@using OpsFlow.Web.Components.Dashboard
+@using OpsFlow.Web.Models.Dashboard
+@using OpsFlow.Web.Models.Orders
+@using OpsFlow.Web.Realtime
+@implements IDisposable
+@inject IDashboardApiClient DashboardApiClient
+@inject OrderUpdatesClient OrderUpdates
 
 <PageTitle>Dashboard | OpsFlow</PageTitle>
 
 <section class="ops-page">
-    <header class="ops-page-header">
-        <span class="ops-eyebrow">Operations overview</span>
-        <h1>Dashboard</h1>
-        <p>
-            Monitor order volume, processing health and integrations
-            that require operational attention.
-        </p>
+    <header class="ops-page-header ops-dashboard-header">
+        <div>
+            <span class="ops-eyebrow">Operations overview</span>
+            <h1>Dashboard</h1>
+            <p>Monitor order volume, processing health and integrations that require attention.</p>
+        </div>
+        <div class="ops-dashboard-actions">
+            <label for="dashboard-period">Period</label>
+            <select id="dashboard-period" value="@_selectedPeriod" @onchange="OnPeriodChangedAsync">
+                <option value="all">All data</option>
+                <option value="7">Last 7 days</option>
+                <option value="30">Last 30 days</option>
+            </select>
+            <a class="ops-button ops-button-primary" href="/orders">Open orders</a>
+        </div>
     </header>
 
-    <div class="ops-placeholder">
-        <h2>Operational metrics</h2>
-        <p>The first metric cards will be implemented in the next UI block.</p>
+    <div class="ops-dashboard-live" aria-live="polite">
+        <span class="ops-dashboard-live-dot @(OrderUpdates.State == "Connected" ? "is-connected" : null)"></span>
+        Live metrics: @OrderUpdates.State
     </div>
+
+    @if (_isLoading)
+    {
+        <div class="ops-placeholder ops-dashboard-loading" role="status">Loading operational metrics...</div>
+    }
+    else if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <div class="ops-alert ops-alert-error" role="alert">
+            @_errorMessage
+            <button type="button" class="ops-link-button" @onclick="LoadSummaryAsync">Try again</button>
+        </div>
+    }
+    else if (_summary is not null)
+    {
+        <div class="ops-metric-grid">
+            <MetricCard Label="Total orders" Value="@_summary.TotalOrders.ToString("N0")"
+                        Caption="Orders in the selected period" Tone="neutral" />
+            <MetricCard Label="Processing" Value="@_summary.ProcessingOrders.ToString("N0")"
+                        Caption="Currently with providers" Tone="accent" />
+            <MetricCard Label="Failed" Value="@_summary.FailedOrders.ToString("N0")"
+                        Caption="Require operational attention" Tone="danger" />
+            <MetricCard Label="Success rate" Value="@($"{_summary.SuccessRate:N1}%")"
+                        Caption="Completed among final outcomes" Tone="success" />
+        </div>
+
+        <div class="ops-dashboard-grid">
+            <section class="ops-placeholder ops-dashboard-panel">
+                <header>
+                    <div>
+                        <span class="ops-eyebrow">Distribution</span>
+                        <h2>Orders by status</h2>
+                    </div>
+                    <span>@_summary.TotalOrders total</span>
+                </header>
+
+                <div class="ops-status-bars">
+                    @foreach (var item in _summary.OrdersByStatus.OrderByDescending(item => item.Count))
+                    {
+                        <div class="ops-status-bar-row">
+                            <div><strong>@item.Status</strong><span>@item.Count</span></div>
+                            <div class="ops-status-bar-track">
+                                <span style="width: @StatusWidth(item.Count)%"></span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </section>
+
+            <section class="ops-placeholder ops-dashboard-panel">
+                <header>
+                    <div>
+                        <span class="ops-eyebrow">Daily flow</span>
+                        <h2>Order volume</h2>
+                    </div>
+                    <span>@_summary.Volume.Count days</span>
+                </header>
+
+                @if (_summary.Volume.Count == 0)
+                {
+                    <p class="ops-dashboard-empty">No volume in this period.</p>
+                }
+                else
+                {
+                    <div class="ops-volume-chart" aria-label="Order volume by day">
+                        @foreach (var point in _summary.Volume.OrderBy(point => point.Date))
+                        {
+                            <div class="ops-volume-column" title="@($"{point.Date:d}: {point.Count}")">
+                                <span style="height: @VolumeHeight(point.Count)%"></span>
+                                <small>@point.Date.ToString("dd/MM")</small>
+                            </div>
+                        }
+                    </div>
+                }
+            </section>
+        </div>
+
+        <section class="ops-placeholder ops-dashboard-panel ops-provider-panel">
+            <header>
+                <div>
+                    <span class="ops-eyebrow">Integrations</span>
+                    <h2>Provider performance</h2>
+                </div>
+                <span>@_summary.ProviderPerformance.Count providers</span>
+            </header>
+
+            <div class="ops-provider-table-wrapper">
+                <table class="ops-provider-table">
+                    <thead>
+                        <tr><th>Provider</th><th>Total</th><th>Completed</th><th>Success rate</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var provider in _summary.ProviderPerformance.OrderByDescending(item => item.TotalOrders))
+                        {
+                            <tr>
+                                <td>@provider.ProviderName</td>
+                                <td>@provider.TotalOrders</td>
+                                <td>@provider.CompletedOrders</td>
+                                <td><strong>@($"{provider.SuccessRate:N1}%")</strong></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    }
 </section>
+
+@code {
+    private readonly CancellationTokenSource _componentCancellationSource = new();
+    private DashboardSummary? _summary;
+    private string _selectedPeriod = "all";
+    private string? _errorMessage;
+    private bool _disposed;
+    private bool _isLoading = true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        // O Dashboard reage ao mesmo evento usado pela tela de detalhes.
+        OrderUpdates.OrderUpdated += HandleOrderUpdatedAsync;
+        OrderUpdates.StateChanged += HandleRealtimeStateChangedAsync;
+        await LoadSummaryAsync();
+
+        try
+        {
+            await OrderUpdates.StartAsync(_componentCancellationSource.Token);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or InvalidOperationException)
+        {
+            _errorMessage = "Live updates are unavailable. Metrics can still be refreshed manually.";
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadSummaryAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            DateTimeOffset? fromUtc = _selectedPeriod == "all"
+                ? null
+                : DateTimeOffset.UtcNow.AddDays(-int.Parse(_selectedPeriod, CultureInfo.InvariantCulture));
+
+            _summary = await DashboardApiClient.GetSummaryAsync(
+                fromUtc,
+                DateTimeOffset.UtcNow,
+                _componentCancellationSource.Token);
+        }
+        catch (Exception exception)
+            when (exception is ApiClientException or HttpRequestException or InvalidOperationException)
+        {
+            _errorMessage = exception is ApiClientException apiException
+                ? apiException.Message
+                : "The dashboard metrics could not be loaded.";
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task OnPeriodChangedAsync(ChangeEventArgs args)
+    {
+        _selectedPeriod = args.Value?.ToString() ?? "all";
+        await LoadSummaryAsync();
+    }
+
+    private async Task HandleOrderUpdatedAsync(OrderUpdatedEvent message)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        await InvokeAsync(async () =>
+        {
+            await LoadSummaryAsync();
+            StateHasChanged();
+        });
+    }
+
+    private Task HandleRealtimeStateChangedAsync() =>
+        _disposed ? Task.CompletedTask : InvokeAsync(StateHasChanged);
+
+    private double StatusWidth(int count) =>
+        _summary is null || _summary.TotalOrders == 0
+            ? 0
+            : Math.Max(4, count * 100d / _summary.TotalOrders);
+
+    private double VolumeHeight(int count)
+    {
+        var maximum = _summary?.Volume.Max(item => item.Count) ?? 0;
+        return maximum == 0 ? 0 : Math.Max(8, count * 100d / maximum);
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        OrderUpdates.OrderUpdated -= HandleOrderUpdatedAsync;
+        OrderUpdates.StateChanged -= HandleRealtimeStateChangedAsync;
+        _componentCancellationSource.Cancel();
+        _componentCancellationSource.Dispose();
+        GC.SuppressFinalize(this);
+    }
+}

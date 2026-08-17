@@ -1,0 +1,308 @@
+@page "/orders/{OrderId:guid}"
+@using OpsFlow.Web.Clients.Common
+@using OpsFlow.Web.Clients.Orders
+@using OpsFlow.Web.Components.Orders
+@using OpsFlow.Web.Models.Orders
+@using OpsFlow.Web.Realtime
+@implements IDisposable
+@inject IOrdersApiClient OrdersApiClient
+@inject OrderUpdatesClient OrderUpdates
+
+<PageTitle>@(_order?.Number ?? "Order details") | OpsFlow</PageTitle>
+
+<section class="ops-page">
+    <a class="ops-back-link" href="/orders">← Back to orders</a>
+
+    @if (_isLoading)
+    {
+        <div class="ops-placeholder ops-detail-loading" role="status">Loading order details...</div>
+    }
+    else if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <div class="ops-alert ops-alert-error" role="alert">
+            @_errorMessage
+            <button type="button" class="ops-link-button" @onclick="LoadOrderAsync">Try again</button>
+        </div>
+    }
+    else if (_order is not null)
+    {
+        <header class="ops-page-header ops-detail-header">
+            <div>
+                <span class="ops-eyebrow">Order details</span>
+                <div class="ops-detail-title">
+                    <h1>@_order.Number</h1>
+                    <OrderStatusBadge Status="@_order.Status" />
+                </div>
+                <p>Updated @_order.UpdatedAtUtc.ToLocalTime().ToString("g")</p>
+            </div>
+
+            <div class="ops-detail-actions">
+                <span class="ops-live-label">SignalR: @OrderUpdates.State</span>
+                @if (CanRetry)
+                {
+                    <button type="button" class="ops-button ops-button-primary" disabled="@_isRetrying"
+                            @onclick="RetryOrderAsync">
+                        @(_isRetrying ? "Queueing..." : "Retry integration")
+                    </button>
+                }
+            </div>
+        </header>
+
+        @if (!string.IsNullOrWhiteSpace(_feedbackMessage))
+        {
+            <div class="ops-alert ops-alert-success" role="status">@_feedbackMessage</div>
+        }
+
+        <div class="ops-detail-summary">
+            <article>
+                <span>Customer</span>
+                <strong>@_order.CustomerName</strong>
+                <small>@_order.CustomerEmail</small>
+            </article>
+            <article>
+                <span>Provider</span>
+                <strong>@_order.ProviderName</strong>
+                <small>External integration</small>
+            </article>
+            <article>
+                <span>Amount</span>
+                <strong>@_order.Amount.ToString("C2")</strong>
+                <small>Created @_order.CreatedAtUtc.ToLocalTime().ToString("d")</small>
+            </article>
+            <article>
+                <span>Attempts</span>
+                <strong>@_order.IntegrationAttempts.Count</strong>
+                <small>@ActiveAttemptLabel</small>
+            </article>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(_order.Notes))
+        {
+            <section class="ops-placeholder ops-detail-section">
+                <h2>Operational notes</h2>
+                <p>@_order.Notes</p>
+            </section>
+        }
+
+        <div class="ops-detail-columns">
+            <section class="ops-placeholder ops-detail-section">
+                <header class="ops-section-header">
+                    <div>
+                        <span class="ops-eyebrow">Audit trail</span>
+                        <h2>Status timeline</h2>
+                    </div>
+                    <span>@_order.StatusHistory.Count events</span>
+                </header>
+
+                @if (_order.StatusHistory.Count == 0)
+                {
+                    <p class="ops-muted-copy">No status transitions recorded.</p>
+                }
+                else
+                {
+                    <ol class="ops-timeline">
+                        @foreach (var history in _order.StatusHistory.OrderByDescending(item => item.ChangedAtUtc))
+                        {
+                            <li>
+                                <span class="ops-timeline-marker" aria-hidden="true"></span>
+                                <div>
+                                    <strong>@history.PreviousStatus → @history.NewStatus</strong>
+                                    <p>@history.Reason</p>
+                                    <small>@history.ChangedBy · @history.ChangedAtUtc.ToLocalTime().ToString("g")</small>
+                                </div>
+                            </li>
+                        }
+                    </ol>
+                }
+            </section>
+
+            <section class="ops-placeholder ops-detail-section">
+                <header class="ops-section-header">
+                    <div>
+                        <span class="ops-eyebrow">Provider calls</span>
+                        <h2>Integration attempts</h2>
+                    </div>
+                    <span>@_order.IntegrationAttempts.Count attempts</span>
+                </header>
+
+                @if (_order.IntegrationAttempts.Count == 0)
+                {
+                    <p class="ops-muted-copy">No integration attempt has been recorded yet.</p>
+                }
+                else
+                {
+                    <div class="ops-attempt-list">
+                        @foreach (var attempt in _order.IntegrationAttempts.OrderByDescending(item => item.AttemptNumber))
+                        {
+                            <article class="ops-attempt-card">
+                                <header>
+                                    <strong>Attempt #@attempt.AttemptNumber</strong>
+                                    <span class="ops-attempt-status">@attempt.Status</span>
+                                </header>
+                                <dl>
+                                    <div><dt>Correlation</dt><dd>@attempt.CorrelationId</dd></div>
+                                    <div><dt>Queued</dt><dd>@attempt.QueuedAtUtc.ToLocalTime().ToString("g")</dd></div>
+                                    <div><dt>Duration</dt><dd>@FormatDuration(attempt.DurationMilliseconds)</dd></div>
+                                    @if (!string.IsNullOrWhiteSpace(attempt.ErrorCode))
+                                    {
+                                        <div><dt>Error</dt><dd>@attempt.ErrorCode</dd></div>
+                                    }
+                                </dl>
+                                @if (!string.IsNullOrWhiteSpace(attempt.SanitizedError))
+                                {
+                                    <p class="ops-attempt-error">@attempt.SanitizedError</p>
+                                }
+                            </article>
+                        }
+                    </div>
+                }
+            </section>
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter]
+    public Guid OrderId { get; set; }
+
+    private readonly CancellationTokenSource _componentCancellationSource = new();
+    private OpsFlow.Web.Models.Orders.OrderDetails? _order;
+    private string? _errorMessage;
+    private string? _feedbackMessage;
+    private bool _disposed;
+    private bool _isLoading = true;
+    private bool _isRetrying;
+
+    private bool CanRetry =>
+        _order?.Status == "Failed" &&
+        !_order.IntegrationAttempts.Any(attempt => attempt.Status is "Queued" or "Processing");
+
+    private string ActiveAttemptLabel =>
+        _order?.IntegrationAttempts.Any(attempt => attempt.Status is "Queued" or "Processing") == true
+            ? "Processing in background"
+            : "No active attempt";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        // A carga após o prerender evita duas consultas ao mesmo pedido.
+        OrderUpdates.OrderUpdated += HandleOrderUpdatedAsync;
+        OrderUpdates.StateChanged += HandleRealtimeStateChangedAsync;
+
+        await LoadOrderAsync();
+
+        try
+        {
+            await OrderUpdates.StartAsync(_componentCancellationSource.Token);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or InvalidOperationException)
+        {
+            _feedbackMessage = "Live updates are unavailable; use Try again to refresh manually.";
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadOrderAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        try
+        {
+            _order = await OrdersApiClient.GetOrderAsync(OrderId, _componentCancellationSource.Token);
+        }
+        catch (Exception exception)
+            when (exception is ApiClientException or HttpRequestException or InvalidOperationException)
+        {
+            _errorMessage = FormatApiError(exception, "The order details could not be loaded.");
+        }
+        finally
+        {
+            _isLoading = false;
+        }
+    }
+
+    private async Task RetryOrderAsync()
+    {
+        if (_order is null || !CanRetry)
+        {
+            return;
+        }
+
+        _isRetrying = true;
+        _errorMessage = null;
+
+        try
+        {
+            // A chave impede que cliques repetidos criem duas tentativas.
+            var idempotencyKey = $"web-{OrderId:N}-{Guid.NewGuid():N}";
+            var accepted = await OrdersApiClient.RetryOrderAsync(
+                OrderId,
+                idempotencyKey,
+                _componentCancellationSource.Token);
+
+            _feedbackMessage = $"Attempt #{accepted.AttemptNumber} queued. Waiting for the Worker.";
+            await LoadOrderAsync();
+        }
+        catch (Exception exception)
+            when (exception is ApiClientException or HttpRequestException or InvalidOperationException)
+        {
+            _errorMessage = FormatApiError(exception, "The retry could not be queued.");
+        }
+        finally
+        {
+            _isRetrying = false;
+        }
+    }
+
+    private async Task HandleOrderUpdatedAsync(OrderUpdatedEvent message)
+    {
+        if (_disposed || message.OrderId != OrderId)
+        {
+            return;
+        }
+
+        await InvokeAsync(async () =>
+        {
+            _feedbackMessage = $"Real-time update received: {message.Status} / {message.AttemptStatus}.";
+            await LoadOrderAsync();
+            StateHasChanged();
+        });
+    }
+
+    private Task HandleRealtimeStateChangedAsync() =>
+        _disposed ? Task.CompletedTask : InvokeAsync(StateHasChanged);
+
+    private static string FormatDuration(int? milliseconds) =>
+        milliseconds.HasValue ? $"{milliseconds.Value:N0} ms" : "Pending";
+
+    private static string FormatApiError(Exception exception, string fallback)
+    {
+        if (exception is not ApiClientException apiException)
+        {
+            return fallback;
+        }
+
+        var message = apiException.Errors.Values.SelectMany(items => items).FirstOrDefault()
+            ?? apiException.Message;
+
+        return string.IsNullOrWhiteSpace(apiException.CorrelationId)
+            ? message
+            : $"{message} Correlation: {apiException.CorrelationId}";
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        OrderUpdates.OrderUpdated -= HandleOrderUpdatedAsync;
+        OrderUpdates.StateChanged -= HandleRealtimeStateChangedAsync;
+        _componentCancellationSource.Cancel();
+        _componentCancellationSource.Dispose();
+        GC.SuppressFinalize(this);
+    }
+}

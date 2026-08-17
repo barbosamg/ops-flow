@@ -1,0 +1,45 @@
+.ops-metric-card {
+    position: relative;
+    display: grid;
+    gap: 0.35rem;
+    overflow: hidden;
+    padding: 1.2rem;
+    border: 1px solid var(--ops-border);
+    border-radius: 0.9rem;
+    background: var(--ops-surface);
+}
+
+.ops-metric-card::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 0.25rem;
+    background: #8a98aa;
+}
+
+.ops-metric-card.is-success::before {
+    background: var(--ops-success);
+}
+
+.ops-metric-card.is-danger::before {
+    background: #d92d20;
+}
+
+.ops-metric-card.is-accent::before {
+    background: var(--ops-accent);
+}
+
+.ops-metric-card span,
+.ops-metric-card small {
+    color: var(--ops-muted);
+}
+
+.ops-metric-card span {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.ops-metric-card strong {
+    font-size: clamp(1.6rem, 3vw, 2.2rem);
+}

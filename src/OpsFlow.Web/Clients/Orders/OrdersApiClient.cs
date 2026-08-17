@@ -1,6 +1,8 @@
 using System.Globalization;
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.WebUtilities;
+using OpsFlow.Web.Clients.Common;
 using OpsFlow.Web.Models.Common;
 using OpsFlow.Web.Models.Orders;
 
@@ -25,7 +27,7 @@ public sealed class OrdersApiClient : IOrdersApiClient
             requestUri,
             cancellationToken);
 
-        response.EnsureSuccessStatusCode();
+        await ApiResponse.EnsureSuccessAsync(response, cancellationToken);
 
         var payload = await response.Content
             .ReadFromJsonAsync<PagedResponse<OrderApiItem>>(
@@ -46,6 +48,73 @@ public sealed class OrdersApiClient : IOrdersApiClient
             payload.Page,
             payload.PageSize,
             payload.TotalCount);
+    }
+
+    public async Task<OrderDetails> GetOrderAsync(
+        Guid orderId,
+        CancellationToken cancellationToken)
+    {
+        using var response = await _httpClient.GetAsync(
+            $"api/orders/{orderId}",
+            cancellationToken);
+
+        await ApiResponse.EnsureSuccessAsync(response, cancellationToken);
+
+        return await ReadDetailsAsync(response, cancellationToken);
+    }
+
+    public async Task<OrderDetails> CreateOrderAsync(
+        OrderUpsertRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var response = await _httpClient.PostAsJsonAsync(
+            "api/orders",
+            request.ToCreatePayload(),
+            cancellationToken);
+
+        await ApiResponse.EnsureSuccessAsync(response, cancellationToken);
+
+        return await ReadDetailsAsync(response, cancellationToken);
+    }
+
+    public async Task<OrderDetails> UpdateOrderAsync(
+        Guid orderId,
+        OrderUpsertRequest request,
+        CancellationToken cancellationToken)
+    {
+        using var response = await _httpClient.PutAsJsonAsync(
+            $"api/orders/{orderId}",
+            request.ToUpdatePayload(),
+            cancellationToken);
+
+        await ApiResponse.EnsureSuccessAsync(response, cancellationToken);
+
+        return await ReadDetailsAsync(response, cancellationToken);
+    }
+
+    public async Task<OrderRetryAccepted> RetryOrderAsync(
+        Guid orderId,
+        string idempotencyKey,
+        CancellationToken cancellationToken)
+    {
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"api/orders/{orderId}/retry");
+
+        request.Headers.Add("Idempotency-Key", idempotencyKey);
+        request.Headers.Accept.Add(
+            new MediaTypeWithQualityHeaderValue("application/json"));
+
+        using var response = await _httpClient.SendAsync(
+            request,
+            cancellationToken);
+
+        await ApiResponse.EnsureSuccessAsync(response, cancellationToken);
+
+        return await response.Content
+            .ReadFromJsonAsync<OrderRetryAccepted>(cancellationToken)
+            ?? throw new InvalidOperationException(
+                "The Orders API returned an empty retry response.");
     }
 
     private static string BuildRequestUri(OrderSearchRequest request)
@@ -114,4 +183,12 @@ public sealed class OrdersApiClient : IOrdersApiClient
             item.CreatedAtUtc,
             item.Status);
     }
+
+    private static async Task<OrderDetails> ReadDetailsAsync(
+        HttpResponseMessage response,
+        CancellationToken cancellationToken) =>
+        await response.Content.ReadFromJsonAsync<OrderDetails>(
+            cancellationToken)
+        ?? throw new InvalidOperationException(
+            "The Orders API returned an empty order response.");
 }

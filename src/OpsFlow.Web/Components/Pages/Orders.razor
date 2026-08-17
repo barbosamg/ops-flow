@@ -1,98 +1,160 @@
 @page "/orders"
 @using System.Text.Json
+@using OpsFlow.Web.Clients.Common
+@using OpsFlow.Web.Clients.Customers
 @using OpsFlow.Web.Clients.Orders
-@using OpsFlow.Web.Components.Orders
-@using OpsFlow.Web.Models.Orders
 @using OpsFlow.Web.Clients.Providers
+@using OpsFlow.Web.Components.Orders
+@using OpsFlow.Web.Models.Customers
+@using OpsFlow.Web.Models.Orders
 @using OpsFlow.Web.Models.Providers
-@inject IProvidersApiClient ProvidersApiClient
+@using OpsFlow.Web.Realtime
 @implements IDisposable
+@inject ICustomersApiClient CustomersApiClient
 @inject IOrdersApiClient OrdersApiClient
+@inject IProvidersApiClient ProvidersApiClient
+@inject OrderUpdatesClient OrderUpdates
 
 <PageTitle>Orders | OpsFlow</PageTitle>
 
 <section class="ops-page">
-    <header class="ops-page-header">
-        <span class="ops-eyebrow">Orders workspace</span>
-        <h1>Orders</h1>
-        <p>
-            Search, filter and act on orders without losing operational context.
-        </p>
+    <header class="ops-page-header ops-page-header-with-actions">
+        <div>
+            <span class="ops-eyebrow">Orders workspace</span>
+            <h1>Orders</h1>
+            <p>Search, filter and act on orders without losing operational context.</p>
+        </div>
+        <button type="button" class="ops-button ops-button-primary" @onclick="OpenCreateForm">New order</button>
     </header>
 
-    @if (!string.IsNullOrWhiteSpace(LoadError))
+    <div class="ops-connection-line" aria-live="polite">
+        <span class="ops-connection-dot @ConnectionCssClass" aria-hidden="true"></span>
+        Live updates: @OrderUpdates.State
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(_feedbackMessage))
     {
-        <div class="ops-orders-error" role="alert">
-            @LoadError
+        <div class="ops-alert ops-alert-success" role="status">@_feedbackMessage</div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_loadError))
+    {
+        <div class="ops-alert ops-alert-error" role="alert">
+            @_loadError
+            <button type="button" class="ops-link-button" @onclick="ReloadGridAsync">Try again</button>
         </div>
     }
 
-    @if (!string.IsNullOrWhiteSpace(ProviderLoadError))
+    @if (!string.IsNullOrWhiteSpace(_lookupError))
     {
-        <div class="ops-orders-error" role="alert">
-            @ProviderLoadError
-        </div>
+        <div class="ops-alert ops-alert-warning" role="alert">@_lookupError</div>
     }
+
+    <section class="ops-filter-panel" aria-label="Advanced order filters">
+        <div class="ops-filter-field">
+            <label>Status</label>
+            <TelerikDropDownList Data="@StatusOptions" TItem="@string" TValue="@string"
+                                 Value="@_selectedStatus" ValueChanged="@OnStatusChangedAsync"
+                                 AriaLabel="Filter orders by status" Width="100%" />
+        </div>
+
+        <div class="ops-filter-field">
+            <label>Provider</label>
+            <TelerikDropDownList Data="@_providerOptions" TItem="@ProviderOption" TValue="@Guid"
+                                 TextField="@nameof(ProviderOption.Name)" ValueField="@nameof(ProviderOption.Id)"
+                                 Value="@_selectedProviderId" ValueChanged="@OnProviderChangedAsync"
+                                 AriaLabel="Filter orders by provider" Width="100%" />
+        </div>
+
+        <div class="ops-filter-field">
+            <label>Customer</label>
+            <TelerikDropDownList Data="@_customerOptions" TItem="@CustomerOption" TValue="@Guid"
+                                 TextField="@nameof(CustomerOption.Name)" ValueField="@nameof(CustomerOption.Id)"
+                                 Value="@_selectedCustomerId" ValueChanged="@OnCustomerChangedAsync"
+                                 AriaLabel="Filter orders by customer" Width="100%" />
+        </div>
+
+        <div class="ops-filter-field">
+            <label for="created-from">Created from</label>
+            <input id="created-from" type="date" @bind="_createdFrom" />
+        </div>
+
+        <div class="ops-filter-field">
+            <label for="created-to">Created to</label>
+            <input id="created-to" type="date" @bind="_createdTo" />
+        </div>
+
+        <div class="ops-filter-field">
+            <label for="minimum-amount">Minimum amount</label>
+            <input id="minimum-amount" type="number" min="0" step="0.01" @bind="_minimumAmount" />
+        </div>
+
+        <div class="ops-filter-field">
+            <label for="maximum-amount">Maximum amount</label>
+            <input id="maximum-amount" type="number" min="0" step="0.01" @bind="_maximumAmount" />
+        </div>
+
+        <div class="ops-filter-actions">
+            <button type="button" class="ops-button ops-button-secondary" @onclick="ApplyFiltersAsync">Apply</button>
+            <button type="button" class="ops-button ops-button-ghost" @onclick="ClearFiltersAsync">Clear</button>
+        </div>
+    </section>
+
+    <div class="ops-grid-summary" aria-live="polite">
+        <span>@_lastTotal order@(_lastTotal == 1 ? string.Empty : "s") found</span>
+        @if (_isGridLoading)
+        {
+            <span class="ops-inline-loader">Loading...</span>
+        }
+    </div>
 
     <div class="ops-placeholder ops-grid-surface">
-        <TelerikGrid TItem="@OrderListItem" OnRead="@ReadOrdersAsync" @ref="_ordersGrid" Pageable="true" Sortable="true"
-                     Resizable="true" PageSize="5">
+        <TelerikGrid TItem="@OrderListItem" OnRead="@ReadOrdersAsync" @ref="_ordersGrid"
+                     Pageable="true" Sortable="true" Resizable="true" PageSize="5">
             <GridToolBar>
-                <GridToolBarCustomTool>
-                    <label class="ops-status-filter">
-                        <span>Status</span>
-
-                        <TelerikDropDownList Data="@StatusOptions" TItem="@string" TValue="@string"
-                                             Value="@SelectedStatus" ValueChanged="@((string value) => OnStatusChangedAsync(value))"
-                                             AriaLabel="Filter orders by status" Width="180px" />
-                    </label>
-                </GridToolBarCustomTool>
-
-                <GridToolBarCustomTool>
-                    <label class="ops-status-filter">
-                        <span>Provider</span>
-
-                        <TelerikDropDownList Data="@ProviderOptions" TItem="@ProviderOption" TValue="@Guid"
-                                             TextField="@nameof(ProviderOption.Name)" ValueField="@nameof(ProviderOption.Id)"
-                                             Value="@SelectedProviderId" ValueChanged="@((Guid value) => OnProviderChangedAsync(value))"
-                                             AriaLabel="Filter orders by provider" Width="200px" />
-                    </label>
-                </GridToolBarCustomTool>
-
-                <GridToolBarSpacerTool />
-                <GridToolBarSearchBoxTool Placeholder="Search orders..." Width="320px" DebounceDelay="350"
-                                          Fields="@SearchableFields" />
+                <GridToolBarSearchBoxTool Placeholder="Search by order, customer or provider..."
+                                          Width="360px" DebounceDelay="350" Fields="@SearchableFields" />
             </GridToolBar>
+
+            <NoDataTemplate>
+                <div class="ops-empty-state">
+                    <strong>No orders found</strong>
+                    <span>Adjust the filters or create a new order.</span>
+                </div>
+            </NoDataTemplate>
+
             <GridColumns>
                 <GridColumn Field="@nameof(OrderListItem.Number)" Title="Order" Width="160px" />
-
                 <GridColumn Field="@nameof(OrderListItem.CustomerName)" Title="Customer" Width="240px">
                     <Template Context="item">
-                        @{
-                            var order = (OrderListItem)item;
-                        }
-
+                        @{ var order = (OrderListItem)item; }
                         <div class="ops-customer-cell">
                             <strong>@order.CustomerName</strong>
                             <span>@order.CustomerEmail</span>
                         </div>
                     </Template>
                 </GridColumn>
-
                 <GridColumn Field="@nameof(OrderListItem.ProviderName)" Title="Provider" Width="180px" />
-
                 <GridColumn Field="@nameof(OrderListItem.Total)" Title="Total" DisplayFormat="{0:C2}" Width="140px" />
-
-                <GridColumn Field="@nameof(OrderListItem.CreatedAt)" Title="Created" DisplayFormat="{0:g}"
-                            Width="180px" />
-
+                <GridColumn Field="@nameof(OrderListItem.CreatedAt)" Title="Created" DisplayFormat="{0:g}" Width="180px" />
                 <GridColumn Field="@nameof(OrderListItem.Status)" Title="Status" Width="150px">
                     <Template Context="item">
-                        @{
-                            var order = (OrderListItem)item;
-                        }
-
+                        @{ var order = (OrderListItem)item; }
                         <OrderStatusBadge Status="@order.Status" />
+                    </Template>
+                </GridColumn>
+                <GridColumn Title="Actions" Sortable="false" Width="190px">
+                    <Template Context="item">
+                        @{ var order = (OrderListItem)item; }
+                        <div class="ops-row-actions">
+                            <a class="ops-action-link" href="@($"/orders/{order.Id}")">Details</a>
+                            @if (CanEdit(order.Status))
+                            {
+                                <button type="button" class="ops-link-button"
+                                        disabled="@(_loadingOrderId == order.Id)"
+                                        @onclick="() => OpenEditFormAsync(order.Id)">Edit</button>
+                            }
+                        </div>
                     </Template>
                 </GridColumn>
             </GridColumns>
@@ -100,20 +162,116 @@
     </div>
 </section>
 
+@if (_showOrderForm)
+{
+    <div class="ops-modal-backdrop" @onclick="CloseOrderForm">
+        <section class="ops-modal" role="dialog" aria-modal="true" aria-labelledby="order-form-title"
+                 @onclick:stopPropagation="true">
+            <header class="ops-modal-header">
+                <div>
+                    <span class="ops-eyebrow">@(_editingOrderId.HasValue ? "Update order" : "Create order")</span>
+                    <h2 id="order-form-title">@(_editingOrderId.HasValue ? "Edit order" : "New order")</h2>
+                </div>
+                <button type="button" class="ops-modal-close" aria-label="Close order form" @onclick="CloseOrderForm">×</button>
+            </header>
+
+            @if (!string.IsNullOrWhiteSpace(_formError))
+            {
+                <div class="ops-alert ops-alert-error" role="alert">@_formError</div>
+            }
+
+            <EditForm Model="@_orderForm" OnValidSubmit="@SaveOrderAsync" FormName="order-editor">
+                <DataAnnotationsValidator />
+                <div class="ops-form-grid">
+                    <div class="ops-form-field">
+                        <label for="order-customer">Customer</label>
+                        <InputSelect id="order-customer" @bind-Value="_orderForm.CustomerId" disabled="@_isSaving">
+                            <option value="">Select a customer</option>
+                            @foreach (var customer in _customerOptions.Where(option => option.Id != Guid.Empty))
+                            {
+                                <option value="@customer.Id">@customer.Name</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="@(() => _orderForm.CustomerId)" />
+                    </div>
+
+                    <div class="ops-form-field">
+                        <label for="order-provider">Provider</label>
+                        <InputSelect id="order-provider" @bind-Value="_orderForm.ProviderId" disabled="@_isSaving">
+                            <option value="">Select a provider</option>
+                            @foreach (var provider in _providerOptions.Where(option => option.Id != Guid.Empty))
+                            {
+                                <option value="@provider.Id">@provider.Name</option>
+                            }
+                        </InputSelect>
+                        <ValidationMessage For="@(() => _orderForm.ProviderId)" />
+                    </div>
+
+                    <div class="ops-form-field">
+                        <label for="order-amount">Amount</label>
+                        <InputNumber id="order-amount" @bind-Value="_orderForm.Amount" step="0.01" disabled="@_isSaving" />
+                        <ValidationMessage For="@(() => _orderForm.Amount)" />
+                    </div>
+
+                    <div class="ops-form-field ops-form-field-wide">
+                        <label for="order-notes">Notes</label>
+                        <InputTextArea id="order-notes" @bind-Value="_orderForm.Notes" rows="4" disabled="@_isSaving" />
+                        <ValidationMessage For="@(() => _orderForm.Notes)" />
+                    </div>
+                </div>
+
+                <footer class="ops-modal-footer">
+                    <button type="button" class="ops-button ops-button-ghost" disabled="@_isSaving" @onclick="CloseOrderForm">Cancel</button>
+                    <button type="submit" class="ops-button ops-button-primary" disabled="@_isSaving">
+                        @(_isSaving ? "Saving..." : "Save order")
+                    </button>
+                </footer>
+            </EditForm>
+        </section>
+    </div>
+}
+
 @code {
-    private static readonly ProviderOption AllProvidersOption =
-        new(Guid.Empty, "All providers", string.Empty);
-
-    private readonly CancellationTokenSource _componentCancellationSource =
-        new();
-
-    private IReadOnlyList<ProviderOption> ProviderOptions { get; set; } =
+    private const string AllStatuses = "All statuses";
+    private static readonly CustomerOption AllCustomersOption = new(Guid.Empty, "All customers", string.Empty);
+    private static readonly ProviderOption AllProvidersOption = new(Guid.Empty, "All providers", string.Empty);
+    private static readonly IReadOnlyList<string> StatusOptions =
     [
-        AllProvidersOption
+        AllStatuses, "Draft", "Pending", "Processing", "Completed", "Failed", "Cancelled"
     ];
 
-    private Guid SelectedProviderId { get; set; }
-    private string? ProviderLoadError { get; set; }
+    private readonly CancellationTokenSource _componentCancellationSource = new();
+    private CancellationTokenSource? _loadCancellationSource;
+    private TelerikGrid<OrderListItem>? _ordersGrid;
+    private IReadOnlyList<CustomerOption> _customerOptions = [AllCustomersOption];
+    private IReadOnlyList<ProviderOption> _providerOptions = [AllProvidersOption];
+    private OrderFormModel _orderForm = new();
+    private Guid? _editingOrderId;
+    private Guid? _loadingOrderId;
+    private Guid _selectedCustomerId;
+    private Guid _selectedProviderId;
+    private string _selectedStatus = AllStatuses;
+    private DateTime? _createdFrom;
+    private DateTime? _createdTo;
+    private decimal? _minimumAmount;
+    private decimal? _maximumAmount;
+    private string? _feedbackMessage;
+    private string? _formError;
+    private string? _loadError;
+    private string? _lookupError;
+    private bool _isGridLoading;
+    private bool _isSaving;
+    private bool _showOrderForm;
+    private bool _disposed;
+    private int _lastTotal;
+
+    private List<string> SearchableFields { get; } =
+    [
+        nameof(OrderListItem.Number), nameof(OrderListItem.CustomerName),
+        nameof(OrderListItem.CustomerEmail), nameof(OrderListItem.ProviderName)
+    ];
+
+    private string ConnectionCssClass => OrderUpdates.State == "Connected" ? "is-connected" : "is-disconnected";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -122,128 +280,127 @@
             return;
         }
 
+        // Após o prerender, os lookups são carregados uma única vez.
+        await LoadLookupsAsync();
+        OrderUpdates.OrderUpdated += HandleOrderUpdatedAsync;
+        OrderUpdates.StateChanged += HandleRealtimeStateChangedAsync;
+
         try
         {
-            var providers = await ProvidersApiClient.GetProvidersAsync(
-                _componentCancellationSource.Token);
-
-            ProviderOptions =
-            [
-                AllProvidersOption,
-                .. providers
-            ];
+            await OrderUpdates.StartAsync(_componentCancellationSource.Token);
         }
-        catch (OperationCanceledException)
-            when (_componentCancellationSource.IsCancellationRequested)
+        catch (Exception exception) when (exception is HttpRequestException or InvalidOperationException)
         {
-            return;
-        }
-        catch (Exception exception)
-            when (exception is HttpRequestException or
-                  JsonException or
-                  InvalidOperationException)
-        {
-            ProviderLoadError =
-                "Providers could not be loaded. The provider filter is unavailable.";
+            _lookupError = "Live updates are temporarily unavailable. Manual actions still work.";
         }
 
         await InvokeAsync(StateHasChanged);
     }
 
-    private List<string> SearchableFields { get; } =
-    [
-        nameof(OrderListItem.Number),
-        nameof(OrderListItem.CustomerName),
-        nameof(OrderListItem.CustomerEmail),
-        nameof(OrderListItem.ProviderName)
-    ];
+    private async Task LoadLookupsAsync()
+    {
+        try
+        {
+            var providers = await ProvidersApiClient.GetProvidersAsync(_componentCancellationSource.Token);
+            _providerOptions = [AllProvidersOption, .. providers];
+        }
+        catch (Exception exception)
+            when (exception is ApiClientException or HttpRequestException or JsonException or InvalidOperationException)
+        {
+            _lookupError = "Providers could not be loaded.";
+        }
 
-    private CancellationTokenSource? _loadCancellationSource;
-
-    private string? LoadError { get; set; }
-    private const string AllStatuses = "All statuses";
-
-    private static readonly IReadOnlyList<string> StatusOptions =
-    [
-        AllStatuses,
-        "Draft",
-        "Pending",
-        "Processing",
-        "Completed",
-        "Failed",
-        "Cancelled"
-    ];
-
-    private TelerikGrid<OrderListItem>? _ordersGrid;
-
-    private string SelectedStatus { get; set; } = AllStatuses;
+        try
+        {
+            var customers = await CustomersApiClient.GetCustomersAsync(_componentCancellationSource.Token);
+            _customerOptions = [AllCustomersOption, .. customers];
+        }
+        catch (Exception exception)
+            when (exception is ApiClientException or HttpRequestException or JsonException or InvalidOperationException)
+        {
+            _lookupError = string.IsNullOrWhiteSpace(_lookupError)
+                ? "Customers could not be loaded."
+                : $"{_lookupError} Customers could not be loaded.";
+        }
+    }
 
     private async Task ReadOrdersAsync(GridReadEventArgs args)
     {
         _loadCancellationSource?.Cancel();
         _loadCancellationSource?.Dispose();
-
-        _loadCancellationSource = new CancellationTokenSource();
+        _loadCancellationSource = CancellationTokenSource.CreateLinkedTokenSource(_componentCancellationSource.Token);
         var cancellationToken = _loadCancellationSource.Token;
-
-        LoadError = null;
+        _isGridLoading = true;
+        _loadError = null;
 
         try
         {
+            // O Grid envia parâmetros seguros; a API consulta o SQL Server.
             var request = TelerikOrderRequestMapper.Map(args.Request) with
             {
-                Status = SelectedStatus == AllStatuses
-                    ? null
-                    : SelectedStatus,
-                ProviderId = SelectedProviderId == Guid.Empty
-                    ? null
-                    : SelectedProviderId
+                Status = _selectedStatus == AllStatuses ? null : _selectedStatus,
+                CustomerId = NullWhenEmpty(_selectedCustomerId),
+                ProviderId = NullWhenEmpty(_selectedProviderId),
+                CreatedFromUtc = ToUtc(_createdFrom, endOfDay: false),
+                CreatedToUtc = ToUtc(_createdTo, endOfDay: true),
+                MinAmount = _minimumAmount,
+                MaxAmount = _maximumAmount
             };
 
-            var response = await OrdersApiClient.GetOrdersAsync(
-                request,
-                cancellationToken);
-
+            var response = await OrdersApiClient.GetOrdersAsync(request, cancellationToken);
             args.Data = response.Items;
             args.Total = response.TotalCount;
+            _lastTotal = response.TotalCount;
         }
-        catch (OperationCanceledException)
-            when (cancellationToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             args.Data = Array.Empty<OrderListItem>();
             args.Total = 0;
         }
         catch (Exception exception)
-            when (exception is HttpRequestException or
-                  JsonException or
-                  InvalidOperationException)
+            when (exception is ApiClientException or HttpRequestException or JsonException or InvalidOperationException)
         {
-            LoadError =
-                "Orders could not be loaded. Check the API and try again.";
-
+            _loadError = FormatApiError(exception, "Orders could not be loaded.");
             args.Data = Array.Empty<OrderListItem>();
             args.Total = 0;
+            _lastTotal = 0;
+        }
+        finally
+        {
+            _isGridLoading = false;
         }
     }
 
     private async Task OnStatusChangedAsync(string value)
     {
-        SelectedStatus = value;
-
-        if (_ordersGrid is null)
-        {
-            return;
-        }
-
-        var state = _ordersGrid.GetState();
-        state.Page = 1;
-
-        await _ordersGrid.SetStateAsync(state);
+        _selectedStatus = value;
+        await RebindGridAsync(resetPage: true);
     }
 
     private async Task OnProviderChangedAsync(Guid value)
     {
-        SelectedProviderId = value;
+        _selectedProviderId = value;
+        await RebindGridAsync(resetPage: true);
+    }
+
+    private async Task OnCustomerChangedAsync(Guid value)
+    {
+        _selectedCustomerId = value;
+        await RebindGridAsync(resetPage: true);
+    }
+
+    private Task ApplyFiltersAsync() => RebindGridAsync(resetPage: true);
+
+    private async Task ClearFiltersAsync()
+    {
+        _selectedStatus = AllStatuses;
+        _selectedCustomerId = Guid.Empty;
+        _selectedProviderId = Guid.Empty;
+        _createdFrom = null;
+        _createdTo = null;
+        _minimumAmount = null;
+        _maximumAmount = null;
+        _feedbackMessage = null;
 
         if (_ordersGrid is null)
         {
@@ -252,18 +409,150 @@
 
         var state = _ordersGrid.GetState();
         state.Page = 1;
+        state.FilterDescriptors.Clear();
+        await _ordersGrid.SetStateAsync(state);
+    }
+
+    private Task ReloadGridAsync() => RebindGridAsync(resetPage: false);
+
+    private async Task RebindGridAsync(bool resetPage)
+    {
+        if (_ordersGrid is null)
+        {
+            return;
+        }
+
+        var state = _ordersGrid.GetState();
+        if (resetPage)
+        {
+            state.Page = 1;
+        }
 
         await _ordersGrid.SetStateAsync(state);
     }
 
+    private void OpenCreateForm()
+    {
+        _editingOrderId = null;
+        _orderForm = new OrderFormModel();
+        _formError = null;
+        _showOrderForm = true;
+    }
+
+    private async Task OpenEditFormAsync(Guid orderId)
+    {
+        _loadingOrderId = orderId;
+        _formError = null;
+
+        try
+        {
+            var order = await OrdersApiClient.GetOrderAsync(orderId, _componentCancellationSource.Token);
+            _editingOrderId = orderId;
+            _orderForm = OrderFormModel.FromDetails(order);
+            _showOrderForm = true;
+        }
+        catch (Exception exception)
+            when (exception is ApiClientException or HttpRequestException or InvalidOperationException)
+        {
+            _loadError = FormatApiError(exception, "The order could not be opened for editing.");
+        }
+        finally
+        {
+            _loadingOrderId = null;
+        }
+    }
+
+    private async Task SaveOrderAsync()
+    {
+        _isSaving = true;
+        _formError = null;
+
+        try
+        {
+            var request = _orderForm.ToRequest();
+            var savedOrder = _editingOrderId.HasValue
+                ? await OrdersApiClient.UpdateOrderAsync(
+                    _editingOrderId.Value, request, _componentCancellationSource.Token)
+                : await OrdersApiClient.CreateOrderAsync(request, _componentCancellationSource.Token);
+
+            _showOrderForm = false;
+            _feedbackMessage = $"Order {savedOrder.Number} saved successfully.";
+            await RebindGridAsync(resetPage: true);
+        }
+        catch (Exception exception)
+            when (exception is ApiClientException or HttpRequestException or InvalidOperationException)
+        {
+            _formError = FormatApiError(exception, "The order could not be saved.");
+        }
+        finally
+        {
+            _isSaving = false;
+        }
+    }
+
+    private void CloseOrderForm()
+    {
+        if (!_isSaving)
+        {
+            _showOrderForm = false;
+            _formError = null;
+        }
+    }
+
+    private async Task HandleOrderUpdatedAsync(OrderUpdatedEvent message)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        await InvokeAsync(async () =>
+        {
+            _feedbackMessage = $"Order updated in real time: {message.Status}.";
+            await RebindGridAsync(resetPage: false);
+        });
+    }
+
+    private Task HandleRealtimeStateChangedAsync() =>
+        _disposed ? Task.CompletedTask : InvokeAsync(StateHasChanged);
+
+    private static bool CanEdit(string status) => status is "Draft" or "Pending";
+    private static Guid? NullWhenEmpty(Guid value) => value == Guid.Empty ? null : value;
+
+    private static DateTimeOffset? ToUtc(DateTime? value, bool endOfDay)
+    {
+        if (!value.HasValue)
+        {
+            return null;
+        }
+
+        var date = endOfDay ? value.Value.Date.AddDays(1).AddTicks(-1) : value.Value.Date;
+        return new DateTimeOffset(DateTime.SpecifyKind(date, DateTimeKind.Utc));
+    }
+
+    private static string FormatApiError(Exception exception, string fallback)
+    {
+        if (exception is not ApiClientException apiException)
+        {
+            return fallback;
+        }
+
+        var validationMessage = apiException.Errors.Values.SelectMany(messages => messages).FirstOrDefault();
+        var message = validationMessage ?? apiException.Message;
+        return string.IsNullOrWhiteSpace(apiException.CorrelationId)
+            ? message
+            : $"{message} Correlation: {apiException.CorrelationId}";
+    }
+
     public void Dispose()
     {
+        _disposed = true;
+        OrderUpdates.OrderUpdated -= HandleOrderUpdatedAsync;
+        OrderUpdates.StateChanged -= HandleRealtimeStateChangedAsync;
         _loadCancellationSource?.Cancel();
         _loadCancellationSource?.Dispose();
-
         _componentCancellationSource.Cancel();
         _componentCancellationSource.Dispose();
-
         GC.SuppressFinalize(this);
     }
 }

@@ -1,0 +1,183 @@
+.ops-dashboard-header,
+.ops-dashboard-actions,
+.ops-dashboard-live,
+.ops-dashboard-panel > header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.ops-dashboard-actions label {
+    color: var(--ops-muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.ops-dashboard-actions select {
+    min-height: 2.5rem;
+    padding: 0.5rem 0.7rem;
+    border: 1px solid var(--ops-border);
+    border-radius: 0.6rem;
+    background: #fff;
+}
+
+.ops-dashboard-live {
+    justify-content: flex-start;
+    margin-top: 0.85rem;
+    color: var(--ops-muted);
+    font-size: 0.8rem;
+}
+
+.ops-dashboard-live-dot {
+    width: 0.55rem;
+    height: 0.55rem;
+    border-radius: 50%;
+    background: #d92d20;
+}
+
+.ops-dashboard-live-dot.is-connected {
+    background: var(--ops-success);
+}
+
+.ops-dashboard-loading,
+.ops-dashboard-empty {
+    color: var(--ops-muted);
+    text-align: center;
+}
+
+.ops-metric-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 1rem;
+    margin-top: 1.4rem;
+}
+
+.ops-dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.ops-dashboard-panel {
+    padding: 1.25rem;
+}
+
+.ops-dashboard-panel > header h2 {
+    margin: 0.2rem 0 0;
+    font-size: 1.15rem;
+}
+
+.ops-dashboard-panel > header > span {
+    color: var(--ops-muted);
+    font-size: 0.78rem;
+}
+
+.ops-status-bars {
+    display: grid;
+    gap: 0.9rem;
+    margin-top: 1.25rem;
+}
+
+.ops-status-bar-row > div:first-child {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.3rem;
+    font-size: 0.82rem;
+}
+
+.ops-status-bar-track {
+    height: 0.55rem;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #e9eef5;
+}
+
+.ops-status-bar-track span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #2f6fed, #58a6ff);
+}
+
+.ops-volume-chart {
+    display: flex;
+    align-items: end;
+    gap: 0.45rem;
+    height: 13rem;
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-bottom: 1px solid var(--ops-border);
+}
+
+.ops-volume-column {
+    display: grid;
+    grid-template-rows: 1fr auto;
+    align-items: end;
+    gap: 0.4rem;
+    flex: 1;
+    height: 100%;
+    min-width: 1.5rem;
+    text-align: center;
+}
+
+.ops-volume-column span {
+    display: block;
+    width: 70%;
+    min-height: 0.3rem;
+    margin: 0 auto;
+    border-radius: 0.35rem 0.35rem 0 0;
+    background: linear-gradient(180deg, #58a6ff, #2f6fed);
+}
+
+.ops-volume-column small {
+    color: var(--ops-muted);
+    font-size: 0.65rem;
+}
+
+.ops-provider-panel {
+    margin-top: 1rem;
+}
+
+.ops-provider-table-wrapper {
+    overflow-x: auto;
+    margin-top: 1rem;
+}
+
+.ops-provider-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.ops-provider-table th,
+.ops-provider-table td {
+    padding: 0.8rem;
+    border-bottom: 1px solid var(--ops-border);
+    text-align: left;
+}
+
+.ops-provider-table th {
+    color: var(--ops-muted);
+    font-size: 0.74rem;
+    text-transform: uppercase;
+}
+
+@media (max-width: 950px) {
+    .ops-metric-grid,
+    .ops-dashboard-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 650px) {
+    .ops-dashboard-header,
+    .ops-dashboard-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .ops-metric-grid,
+    .ops-dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+}

@@ -1,11 +1,14 @@
 using OpsFlow.Web.Components;
 using Telerik.Blazor.Services;
+using OpsFlow.Web.Clients.Customers;
+using OpsFlow.Web.Clients.Dashboard;
 using OpsFlow.Web.Clients.Orders;
 using OpsFlow.Web.Clients.Providers;
+using OpsFlow.Web.Realtime;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
+// Serviços usados pelo circuito Blazor.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
@@ -31,13 +34,32 @@ builder.Services.AddHttpClient<IProvidersApiClient, ProvidersApiClient>(
             UriKind.Absolute);
     });
 
+builder.Services.AddHttpClient<ICustomersApiClient, CustomersApiClient>(
+    client =>
+    {
+        client.BaseAddress = new Uri(
+            apiBaseUrl,
+            UriKind.Absolute);
+    });
+
+builder.Services.AddHttpClient<IDashboardApiClient, DashboardApiClient>(
+    client =>
+    {
+        client.BaseAddress = new Uri(
+            apiBaseUrl,
+            UriKind.Absolute);
+    });
+
+// O serviço scoped mantém uma conexão SignalR por circuito Blazor.
+builder.Services.AddScoped<OrderUpdatesClient>();
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Pipeline HTTP do frontend.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
+    // HSTS força HTTPS fora do ambiente de desenvolvimento.
     app.UseHsts();
 }
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);

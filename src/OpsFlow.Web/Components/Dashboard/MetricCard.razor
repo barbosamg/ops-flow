@@ -1,0 +1,21 @@
+<article class="ops-metric-card @ToneClass">
+    <span>@Label</span>
+    <strong>@Value</strong>
+    <small>@Caption</small>
+</article>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired]
+    public string Value { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Caption { get; set; } = string.Empty;
+
+    [Parameter]
+    public string Tone { get; set; } = "neutral";
+
+    private string ToneClass => $"is-{Tone}";
+}

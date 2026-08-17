@@ -1,5 +1,6 @@
 
 using System.Net.Http.Json;
+using OpsFlow.Web.Clients.Common;
 using OpsFlow.Web.Models.Providers;
 
 namespace OpsFlow.Web.Clients.Providers;
@@ -20,7 +21,7 @@ public sealed class ProvidersApiClient : IProvidersApiClient
             "api/providers",
             cancellationToken);
 
-        response.EnsureSuccessStatusCode();
+        await ApiResponse.EnsureSuccessAsync(response, cancellationToken);
 
         var providers = await response.Content
             .ReadFromJsonAsync<ProviderOption[]>(cancellationToken);
