@@ -5,4 +5,8 @@
     <ProjectReference Include="..\OpsFlow.Infrastructure\OpsFlow.Infrastructure.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="FluentValidation" />
+  </ItemGroup>
+
 </Project>
